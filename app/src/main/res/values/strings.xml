@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Y51 DriveOS</string>
+    <string name="accessibility_service_label">Y51 Auto-Drive Service</string>
+    <string name="accessibility_service_description">Monitors vehicle wake events (SCREEN_ON / USER_PRESENT) and orchestrates Aegis Speedcam, Google Maps + Spotify split-screen navigation, and media playback resumption.</string>
+
+    <string name="status_active">INFINITI Y51 | AUTO-DRIVE ACTIVE</string>
+    <string name="status_inactive">INFINITI Y51 | AUTO-DRIVE OFF - TAP TO ENABLE</string>
+    <string name="header_cluster_tag">Y51 // FINE VISION</string>
+
+    <string name="gps_header">GPS SPEED</string>
+    <string name="gps_unit">KM/H</string>
+    <string name="gps_state_searching">SEARCHING</string>
+    <string name="gps_state_lock">LOCK</string>
+    <string name="gps_state_disabled">GPS OFF</string>
+    <string name="gps_state_no_perm">NO PERMISSION</string>
+    <string name="btn_run_split_routine">RUN SPLIT ROUTINE</string>
+
+    <string name="tile_split_nav">SPLIT NAVIGATION</string>
+    <string name="tile_split_nav_sub">MAPS // SPOTIFY SPLIT</string>
+    <string name="tile_speedcam">SPEEDCAM HUD</string>
+    <string name="tile_speedcam_sub">AEGIS RADAR</string>
+    <string name="tile_vehicle_info">VEHICLE INFO</string>
+    <string name="tile_vehicle_info_sub">SYU // CANBUS</string>
+    <string name="tile_surround_360">360 SURROUND</string>
+    <string name="tile_surround_360_sub">AVM // FRONTVIEW</string>
+
+    <string name="media_title">SPOTIFY AUDIO</string>
+    <string name="media_subtitle">TAP HEADER TO OPEN APP</string>
+    <string name="media_prev">PREV</string>
+    <string name="media_play_pause">PLAY / PAUSE</string>
+    <string name="media_next">NEXT</string>
+
+    <string name="msg_enable_accessibility">Enable Y51 Auto-Drive Service in Accessibility Settings</string>
+    <string name="msg_app_not_installed">Package not installed: %1$s</string>
+    <string name="msg_routine_triggered">Auto-Drive routine initiated</string>
+    <string name="msg_split_triggered">Split navigation initiated</string>
+</resources>
