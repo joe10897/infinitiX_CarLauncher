@@ -22,8 +22,17 @@
     <string name="tile_speedcam_sub">AEGIS RADAR</string>
     <string name="tile_vehicle_info">VEHICLE INFO</string>
     <string name="tile_vehicle_info_sub">SYU // CANBUS</string>
-    <string name="tile_surround_360">360 SURROUND</string>
-    <string name="tile_surround_360_sub">AVM // FRONTVIEW</string>
+    <string name="tile_rear_camera">REAR CAMERA</string>
+    <string name="tile_rear_camera_sub">CAM // HOLD TO BIND</string>
+    <string name="tile_rear_camera_bound_sub">%1$s // HOLD TO BIND</string>
+
+    <string name="picker_rear_cam_title">REAR CAMERA TARGET</string>
+    <string name="picker_rear_cam_subtitle">SELECT SYSTEM CAM APP OR AUTO FALLBACK</string>
+    <string name="picker_auto_fallback_title">AUTO FALLBACK (SYU CAM)</string>
+    <string name="picker_auto_fallback_pkg">avm / frontview / dvr / fcam / aux / video</string>
+    <string name="picker_cancel">CANCEL</string>
+    <string name="msg_rear_cam_bound">Rear camera bound to %1$s</string>
+    <string name="msg_rear_cam_reset">Rear camera set to Auto Fallback</string>
 
     <string name="media_title">SPOTIFY AUDIO</string>
     <string name="media_subtitle">TAP HEADER TO OPEN APP</string>

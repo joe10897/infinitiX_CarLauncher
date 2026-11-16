@@ -4,7 +4,9 @@ import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.AudioManager
+import android.os.Build
 import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
@@ -27,6 +29,37 @@ object AppLauncher {
     const val PKG_CANBUS = "com.syu.canbus"
     const val PKG_AVM = "com.syu.avm"
     const val PKG_FRONTVIEW = "com.syu.frontview"
+    const val PKG_DVR = "com.syu.dvr"
+    const val PKG_FCAM = "com.syu.fcam"
+    const val PKG_AUX = "com.syu.aux"
+    const val PKG_VIDEO = "com.syu.video"
+
+    val REAR_CAMERA_CANDIDATES = listOf(
+        PKG_AVM,
+        PKG_FRONTVIEW,
+        PKG_DVR,
+        PKG_FCAM,
+        PKG_AUX,
+        PKG_VIDEO
+    )
+
+    private val CAMERA_KEYWORDS = listOf(
+        "syu",
+        "avm",
+        "dvr",
+        "fcam",
+        "aux",
+        "video",
+        "frontview",
+        "camera",
+        "rear",
+        "backcar"
+    )
+
+    data class LaunchableApp(
+        val label: String,
+        val packageName: String
+    )
 
     /**
      * Converts meters-per-second GPS speed to an integer km/h reading.
@@ -53,19 +86,73 @@ object AppLauncher {
     }
 
     /**
-     * Launches [primaryPackage], falling back to [fallbackPackage] if unavailable.
-     * Applies [extraFlags] (such as [Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT]) and
-     * automatically adds [Intent.FLAG_ACTIVITY_NEW_TASK] when [newTask] is true.
+     * Prioritizes camera / FYT system packages first, then sorts alphabetically by label.
      */
-    fun launchPackage(
+    fun sortLaunchableAppsForCameraPicker(apps: List<LaunchableApp>): List<LaunchableApp> {
+        return apps.sortedWith(
+            compareByDescending<LaunchableApp> { app ->
+                val lowerPkg = app.packageName.lowercase()
+                val lowerLabel = app.label.lowercase()
+                CAMERA_KEYWORDS.any { kw -> lowerPkg.contains(kw) || lowerLabel.contains(kw) }
+            }.thenBy { it.label.lowercase() }
+        )
+    }
+
+    /**
+     * Queries all launchable apps on the device (excluding this launcher) for picker binding.
+     */
+    @Suppress("DEPRECATION")
+    fun queryLaunchableApps(context: Context): List<LaunchableApp> {
+        val pm = context.packageManager
+        val mainIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        val activities = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            pm.queryIntentActivities(
+                mainIntent,
+                PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_ALL.toLong())
+            )
+        } else {
+            pm.queryIntentActivities(mainIntent, 0)
+        }
+
+        val seenPackages = HashSet<String>()
+        val result = ArrayList<LaunchableApp>()
+        for (info in activities) {
+            val pkg = info.activityInfo?.packageName ?: continue
+            if (pkg == context.packageName || !seenPackages.add(pkg)) continue
+            val label = info.loadLabel(pm)?.toString()?.trim().takeUnless { it.isNullOrEmpty() } ?: pkg
+            result.add(LaunchableApp(label = label, packageName = pkg))
+        }
+        return sortLaunchableAppsForCameraPicker(result)
+    }
+
+    /**
+     * Resolves a human-readable application label for [packageName], or null if unavailable.
+     */
+    @Suppress("DEPRECATION")
+    fun getAppLabel(context: Context, packageName: String): String? {
+        return try {
+            val pm = context.packageManager
+            val appInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                pm.getApplicationInfo(packageName, PackageManager.ApplicationInfoFlags.of(0))
+            } else {
+                pm.getApplicationInfo(packageName, 0)
+            }
+            pm.getApplicationLabel(appInfo).toString().trim().takeIf { it.isNotEmpty() }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Launches the first available package from [candidates].
+     */
+    fun launchPackages(
         context: Context,
-        primaryPackage: String,
-        fallbackPackage: String? = null,
+        candidates: List<String>,
         extraFlags: Int = 0,
         newTask: Boolean = true,
         showMissingToast: Boolean = true
     ): Boolean {
-        val candidates = listOfNotNull(primaryPackage, fallbackPackage)
         val pm = context.packageManager
         val resolved = resolveFirstLaunchPackage(candidates) { pkg ->
             pm.getLaunchIntentForPackage(pkg)
@@ -107,6 +194,26 @@ object AppLauncher {
             }
             false
         }
+    }
+
+    /**
+     * Launches [primaryPackage], falling back to [fallbackPackage] if unavailable.
+     */
+    fun launchPackage(
+        context: Context,
+        primaryPackage: String,
+        fallbackPackage: String? = null,
+        extraFlags: Int = 0,
+        newTask: Boolean = true,
+        showMissingToast: Boolean = true
+    ): Boolean {
+        return launchPackages(
+            context = context,
+            candidates = listOfNotNull(primaryPackage, fallbackPackage),
+            extraFlags = extraFlags,
+            newTask = newTask,
+            showMissingToast = showMissingToast
+        )
     }
 
     /**

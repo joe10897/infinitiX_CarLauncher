@@ -1,9 +1,12 @@
 package com.infiniti.m25launcher
 
 import android.Manifest
+import android.app.Dialog
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
@@ -11,8 +14,13 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.KeyEvent
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
+import android.view.Window
 import android.view.accessibility.AccessibilityManager
+import android.widget.BaseAdapter
+import android.widget.ListView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -36,6 +44,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var layoutGpsHeader: View
     private lateinit var tvGpsStatus: TextView
     private lateinit var tvSpeedValue: AppCompatTextView
+
+    private lateinit var btnRearCamera: View
+    private lateinit var tvRearCameraSub: TextView
 
     private var locationManager: LocationManager? = null
     private var accessibilityManager: AccessibilityManager? = null
@@ -91,6 +102,7 @@ class MainActivity : AppCompatActivity() {
         bindViews()
         setupBackNavigationBlock()
         setupListeners()
+        refreshRearCameraSubtitle()
         applyImmersiveFullscreen()
 
         locationManager = getSystemService(Context.LOCATION_SERVICE) as? LocationManager
@@ -109,6 +121,7 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         applyImmersiveFullscreen()
         refreshAutoDriveStatus()
+        refreshRearCameraSubtitle()
         startGpsUpdates()
     }
 
@@ -137,6 +150,9 @@ class MainActivity : AppCompatActivity() {
         layoutGpsHeader = findViewById(R.id.layoutGpsHeader)
         tvGpsStatus = findViewById(R.id.tvGpsStatus)
         tvSpeedValue = findViewById(R.id.tvSpeedValue)
+
+        btnRearCamera = findViewById(R.id.btnRearCamera)
+        tvRearCameraSub = findViewById(R.id.tvRearCameraSub)
     }
 
     private fun setupBackNavigationBlock() {
@@ -193,12 +209,18 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
-        findViewById<View>(R.id.btnSurround360).setOnClickListener {
-            AppLauncher.launchPackage(
-                this,
-                primaryPackage = AppLauncher.PKG_AVM,
-                fallbackPackage = AppLauncher.PKG_FRONTVIEW
-            )
+        btnRearCamera.setOnClickListener {
+            val boundPackage = getBoundRearCameraPackage()
+            if (boundPackage != null) {
+                AppLauncher.launchPackages(this, listOf(boundPackage))
+            } else {
+                AppLauncher.launchPackages(this, AppLauncher.REAR_CAMERA_CANDIDATES)
+            }
+        }
+
+        btnRearCamera.setOnLongClickListener {
+            showRearCameraPickerDialog()
+            true
         }
 
         findViewById<View>(R.id.btnSpotifyHeader).setOnClickListener {
@@ -216,6 +238,91 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.btnMediaNext).setOnClickListener {
             AppLauncher.dispatchMediaKey(this, KeyEvent.KEYCODE_MEDIA_NEXT)
         }
+    }
+
+    private fun getBoundRearCameraPackage(): String? {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString(KEY_REAR_CAM_PACKAGE, null)?.takeIf { it.isNotBlank() }
+    }
+
+    private fun setBoundRearCameraPackage(packageName: String?) {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().apply {
+            if (packageName.isNullOrBlank()) {
+                remove(KEY_REAR_CAM_PACKAGE)
+            } else {
+                putString(KEY_REAR_CAM_PACKAGE, packageName)
+            }
+        }.apply()
+        refreshRearCameraSubtitle()
+    }
+
+    private fun refreshRearCameraSubtitle() {
+        val boundPkg = getBoundRearCameraPackage()
+        if (boundPkg == null) {
+            tvRearCameraSub.setText(R.string.tile_rear_camera_sub)
+        } else {
+            val label = AppLauncher.getAppLabel(this, boundPkg) ?: boundPkg
+            tvRearCameraSub.text = getString(R.string.tile_rear_camera_bound_sub, label)
+        }
+    }
+
+    private fun showRearCameraPickerDialog() {
+        val installedApps = AppLauncher.queryLaunchableApps(this)
+        val currentBoundPkg = getBoundRearCameraPackage()
+
+        val pickerItems = ArrayList<AppPickerOption>(installedApps.size + 1)
+        pickerItems.add(
+            AppPickerOption(
+                label = getString(R.string.picker_auto_fallback_title),
+                packageName = getString(R.string.picker_auto_fallback_pkg),
+                targetPackage = null
+            )
+        )
+        installedApps.forEach { app ->
+            pickerItems.add(
+                AppPickerOption(
+                    label = app.label,
+                    packageName = app.packageName,
+                    targetPackage = app.packageName
+                )
+            )
+        }
+
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.dialog_app_picker)
+        dialog.window?.apply {
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            val widthPx = (resources.displayMetrics.widthPixels * 0.62f).toInt()
+            setLayout(widthPx, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+
+        dialog.findViewById<View>(R.id.btnPickerCancel).setOnClickListener {
+            dialog.dismiss()
+        }
+
+        val listView = dialog.findViewById<ListView>(R.id.listAppPicker)
+        listView.adapter = AppPickerAdapter(this, pickerItems, currentBoundPkg)
+        listView.setOnItemClickListener { _, _, position, _ ->
+            val selected = pickerItems[position]
+            setBoundRearCameraPackage(selected.targetPackage)
+            if (selected.targetPackage == null) {
+                Toast.makeText(this, R.string.msg_rear_cam_reset, Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(
+                    this,
+                    getString(R.string.msg_rear_cam_bound, selected.label),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            dialog.dismiss()
+        }
+
+        dialog.setOnDismissListener {
+            applyImmersiveFullscreen()
+        }
+        dialog.show()
     }
 
     private fun refreshAutoDriveStatus() {
@@ -365,8 +472,54 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private data class AppPickerOption(
+        val label: String,
+        val packageName: String,
+        val targetPackage: String?
+    )
+
+    private class AppPickerAdapter(
+        context: Context,
+        private val items: List<AppPickerOption>,
+        private val selectedPackage: String?
+    ) : BaseAdapter() {
+
+        private val inflater = LayoutInflater.from(context)
+
+        override fun getCount(): Int = items.size
+
+        override fun getItem(position: Int): AppPickerOption = items[position]
+
+        override fun getItemId(position: Int): Long = position.toLong()
+
+        override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+            val view = convertView ?: inflater.inflate(R.layout.item_app_picker, parent, false)
+            val option = items[position]
+            val isSelected = option.targetPackage == selectedPackage
+
+            val dot = view.findViewById<View>(R.id.viewPickerSelectedDot)
+            val labelTv = view.findViewById<TextView>(R.id.tvPickerAppLabel)
+            val pkgTv = view.findViewById<TextView>(R.id.tvPickerPackageName)
+
+            dot.setBackgroundResource(
+                if (isSelected) R.drawable.indicator_active else R.drawable.indicator_inactive
+            )
+            labelTv.text = option.label
+            labelTv.setTextColor(
+                ContextCompat.getColor(
+                    view.context,
+                    if (isSelected) R.color.accent_fine_vision else R.color.text_primary
+                )
+            )
+            pkgTv.text = option.packageName
+            return view
+        }
+    }
+
     companion object {
         private const val GPS_MIN_TIME_MS = 250L
         private const val GPS_MIN_DISTANCE_M = 0f
+        private const val PREFS_NAME = "y51_launcher_prefs"
+        private const val KEY_REAR_CAM_PACKAGE = "rear_cam_package"
     }
 }

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_panel"
+    android:orientation="vertical"
+    android:padding="14dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <View
+            android:layout_width="2dp"
+            android:layout_height="22dp"
+            android:layout_marginEnd="10dp"
+            android:background="@color/accent_fine_vision" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.10"
+                android:maxLines="1"
+                android:text="@string/picker_rear_cam_title"
+                android:textAllCaps="true"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:fontFamily="sans-serif"
+                android:letterSpacing="0.12"
+                android:maxLines="1"
+                android:text="@string/picker_rear_cam_subtitle"
+                android:textAllCaps="true"
+                android:textColor="@color/text_secondary"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/btnPickerCancel"
+            android:layout_width="wrap_content"
+            android:layout_height="34dp"
+            android:background="@drawable/bg_button_instrument"
+            android:clickable="true"
+            android:focusable="true"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center"
+            android:letterSpacing="0.12"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:text="@string/picker_cancel"
+            android:textAllCaps="true"
+            android:textColor="@color/text_primary"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="10dp"
+        android:background="@color/divider_subtle" />
+
+    <ListView
+        android:id="@+id/listAppPicker"
+        android:layout_width="match_parent"
+        android:layout_height="240dp"
+        android:divider="@color/bg_obsidian"
+        android:dividerHeight="6dp"
+        android:scrollbars="vertical" />
+</LinearLayout>

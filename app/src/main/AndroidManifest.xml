@@ -8,6 +8,10 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
         <package android:name="tw.com.aegis.speedcam" />
         <package android:name="com.google.android.apps.maps" />
         <package android:name="com.spotify.music" />
@@ -15,6 +19,10 @@
         <package android:name="com.syu.canbus" />
         <package android:name="com.syu.avm" />
         <package android:name="com.syu.frontview" />
+        <package android:name="com.syu.dvr" />
+        <package android:name="com.syu.fcam" />
+        <package android:name="com.syu.aux" />
+        <package android:name="com.syu.video" />
     </queries>
 
     <application
