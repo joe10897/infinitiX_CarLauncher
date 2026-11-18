@@ -45,33 +45,21 @@ class AutoDriveLogicTest {
         }
         assertEquals(AppLauncher.PKG_CANBUS, fallbackHit?.first)
 
-        val rearFallbackHit = AppLauncher.resolveFirstLaunchPackage(
-            AppLauncher.REAR_CAMERA_CANDIDATES
-        ) { pkg ->
-            if (pkg == AppLauncher.PKG_AUX) fakeIntent else null
-        }
-        assertEquals(AppLauncher.PKG_AUX, rearFallbackHit?.first)
-
         val noneHit = AppLauncher.resolveFirstLaunchPackage(
-            AppLauncher.REAR_CAMERA_CANDIDATES
+            listOf(AppLauncher.PKG_CAR_INFO, AppLauncher.PKG_CANBUS)
         ) { null }
         assertNull(noneHit)
     }
 
     @Test
-    fun sortLaunchableAppsForCameraPicker_prioritizesCameraAndSyuPackages() {
-        val apps = listOf(
-            AppLauncher.LaunchableApp("Spotify", "com.spotify.music"),
-            AppLauncher.LaunchableApp("Maps", "com.google.android.apps.maps"),
-            AppLauncher.LaunchableApp("Aux Video", "com.syu.aux"),
-            AppLauncher.LaunchableApp("Aegis Speedcam", "tw.com.aegis.speedcam"),
-            AppLauncher.LaunchableApp("Front Cam", "com.example.fcam")
+    fun liquidGlassDrawable_detectsPressedStateFlag() {
+        assertFalse(LiquidGlassDrawable.hasPressedState(intArrayOf()))
+        assertFalse(LiquidGlassDrawable.hasPressedState(intArrayOf(android.R.attr.state_enabled)))
+        assertTrue(LiquidGlassDrawable.hasPressedState(intArrayOf(android.R.attr.state_pressed)))
+        assertTrue(
+            LiquidGlassDrawable.hasPressedState(
+                intArrayOf(android.R.attr.state_enabled, android.R.attr.state_pressed)
+            )
         )
-        val sorted = AppLauncher.sortLaunchableAppsForCameraPicker(apps)
-        assertEquals("com.syu.aux", sorted[0].packageName)
-        assertEquals("com.example.fcam", sorted[1].packageName)
-        assertEquals("tw.com.aegis.speedcam", sorted[2].packageName)
-        assertEquals("com.google.android.apps.maps", sorted[3].packageName)
-        assertEquals("com.spotify.music", sorted[4].packageName)
     }
 }

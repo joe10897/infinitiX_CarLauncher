@@ -2,11 +2,11 @@
 
 專為 **Infiniti M25 (Y51)** 搭配 **方易通 FYT UIS7862 安卓車機（`1280 x 480` 8:3 超寬帶魚屏）** 打造的原生 Android (Kotlin) 車機桌面與零點擊行車自動化系統。
 
-採用日系原廠高對比儀表美學（Infiniti Fine Vision 風格），以純原生 Android Views 建置，保持輕量體積與 Android 10（API 29）分屏及背景啟動相容性。
+採用日系原廠高對比儀表美學（Infiniti Fine Vision 風格）與低眩光深色液態玻璃（Liquid Glass）質感，以純原生 Android Views 建置，保持輕量體積與 Android 10（API 29）分屏及背景啟動相容性。
 
 ---
 
-## 介面預覽 (1280 x 480 Fine Vision UI)
+## 介面預覽 (1280 x 480 Fine Vision Liquid Glass UI)
 
 ### 1. 行車啟動狀態（Auto-Drive 已啟用 & GPS 定位鎖定）
 ![Y51 DriveOS Active Cluster](docs/ui_preview_active.png)
@@ -15,7 +15,7 @@
 ![Y51 DriveOS Inactive Prompt](docs/ui_preview_inactive.png)
 
 > [!NOTE]
-> 以上截圖係透過 Android LayoutLib 以 `1280 x 480`、`160dpi`、`LANDSCAPE` 配置真實渲染專案版面資源所輸出之 `8:3` 比例預覽圖。
+> 以上截圖係透過 Android LayoutLib 以 `1280 x 480`、`160dpi`、`LANDSCAPE` 配置真實渲染專案版面與 `LiquidGlassDrawable` 效果所輸出之 `8:3` 比例預覽圖。
 
 ---
 
@@ -32,14 +32,15 @@
 
 ---
 
-## 視覺設計規範
+## 視覺設計規範（Fine Vision Liquid Glass）
 
-為確保白天日照與夜間駕駛時的視覺專注度與清晰度，介面嚴格遵守以下儀表規範：
+為確保白天日照與夜間駕駛時的視覺專注度與清晰度，介面結合 Infiniti Fine Vision 儀表美學與低眩光深色液態玻璃質感：
 
-- **消光黑底與面板層次**：背景 `#090A0C`，功能面板 `#0F1115` 搭配 `1dp` `#22252C` 髮絲紋邊框與 `4dp` 銳利微圓角。
-- **字體與配色**：主文字 `#F2F2F7`、次要標籤 `#6E7380`（全大寫並加寬 `letterSpacing`）、重點強調色 `#7D85E6`。
+- **深邃微光底層 (`DashboardBackdropDrawable`)**：以 `#07080B` 消光黑為基底，疊加低亮度靛藍與冷藍柔光光暈，提供玻璃卡片所需的自然透射層次且夜間不刺眼。
+- **多層液態玻璃卡片 (`LiquidGlassDrawable`)**：支援 API 26+ 硬體加速渲染，整合半透明煙燻玻璃本體、左上高光反射帶、內緣厚度倒角與方向性漸層折射邊框（`10dp` / `8dp` 微圓角），按壓時即時強化邊框與折射高光回饋。
+- **字體與配色**：主文字 `#F2F2F7`、次要標籤 `#858C9D`（全大寫並加寬 `letterSpacing`）、重點強調色 `#7D85E6`。
 - **等寬數字防抖**：數位時速與右上角即時時間啟用 `tnum`（Tabular Numerals）避免車速跳動時數字左右位移。
-- **純線性圖示**：所有圖示皆為自訂單色線性 `VectorDrawable`（`1.5dp` 描邊、`#F2F2F7`），不使用任何 Emoji、漸層發光陰影或大圓角卡片。
+- **純線性圖示**：所有圖示皆為自訂單色線性 `VectorDrawable`（`1.5dp` 描邊、`#F2F2F7`），不使用任何 Emoji。
 
 ---
 
@@ -51,8 +52,8 @@ flowchart LR
 
     subgraph BODY["1280 x 480 三欄式橫屏儀表主體"]
         direction LR
-        LEFT["左欄 (weight 1.0)<br/>LocationManager GPS 時速錶<br/>speed * 3.6f 取整數<br/>RUN SPLIT ROUTINE 手動觸發"]
-        CENTER["中欄 (weight 1.6)<br/>2x2 盲操按鈕網格<br/>1. SPLIT NAVIGATION<br/>2. SPEEDCAM HUD<br/>3. VEHICLE INFO<br/>4. REAR CAMERA"]
+        LEFT["左欄 (weight 1.0)<br/>LocationManager GPS 時速錶<br/>speed * 3.6f 取整數<br/>VOICE COMMAND 一鍵語音<br/>RUN SPLIT ROUTINE 手動觸發"]
+        CENTER["中欄 (weight 1.6)<br/>1+2 盲操儀表網格<br/>上排寬幅: SPLIT NAVIGATION<br/>下排並排: SPEEDCAM HUD / VEHICLE INFO"]
         RIGHT["右欄 (weight 1.1)<br/>Spotify 標題點擊開啟<br/>PLAY / PAUSE 大按鍵<br/>PREV / NEXT 系統媒體鍵"]
     end
 
@@ -66,16 +67,13 @@ flowchart LR
 | **頂部狀態列** | Auto-Drive 狀態指示 | 偵測 `AutoDriveService` 啟用狀態；未開啟時點擊直接跳轉 `Settings.ACTION_ACCESSIBILITY_SETTINGS` |
 | **頂部狀態列** | 右側即時時鐘 | `TextClock` 自動同步系統 24 小時制時間（`HH:mm`） |
 | **左欄** | GPS 數位時速錶 | 使用 `LocationManager.GPS_PROVIDER` 讀取 `speed * 3.6f` 取整數顯示，支援 `autoSizeTextType="uniform"` |
+| **左欄** | `VOICE COMMAND` | 一鍵啟動內建 Y51 語音路由器收音（亦支援方向盤方控語音鍵全域喚醒） |
 | **左欄** | `RUN SPLIT ROUTINE` | 手動觸發完整行車自動化流程（略過 5 分鐘冷卻限制） |
-| **中欄 #1** | `SPLIT NAVIGATION` | 啟動 Google Maps 並由無障礙服務觸發左右分屏，並排啟動 Spotify |
-| **中欄 #2** | `SPEEDCAM HUD` | 啟動神盾測速照相（`tw.com.aegis.speedcam`） |
-| **中欄 #3** | `VEHICLE INFO` | 啟動方易通原車資訊（`com.syu.carinfo`，若未安裝則 fallback 至 `com.syu.canbus`） |
-| **中欄 #4** | `REAR CAMERA` | 短按依序嘗試 `com.syu.avm` → `com.syu.frontview` → `com.syu.dvr` → `com.syu.fcam` → `com.syu.aux` → `com.syu.video`；**長按可開啟選單自訂綁定車機 App** |
+| **中欄上排** | `SPLIT NAVIGATION` | 寬幅主操作卡，啟動 Google Maps 並由無障礙服務觸發左右分屏，並排啟動 Spotify |
+| **中欄下左** | `SPEEDCAM HUD` | 啟動神盾測速照相（`tw.com.aegis.speedcam`） |
+| **中欄下右** | `VEHICLE INFO` | 啟動方易通原車資訊（`com.syu.carinfo`，若未安裝則 fallback 至 `com.syu.canbus`） |
 | **右欄** | `SPOTIFY AUDIO` 標題 | 點擊開啟 Spotify（`com.spotify.music`） |
 | **右欄** | `PLAY / PAUSE`、`PREV`、`NEXT` | 透過 `AudioManager.dispatchMediaKeyEvent` 發送 `ACTION_DOWN` + `ACTION_UP` 系統媒體按鍵 |
-
-> [!IMPORTANT]
-> **Infiniti M25 Y51 原廠倒車鏡頭硬體限制提醒**：原廠倒車鏡頭多半僅於打 R 檔時供電（由車機 MCU 底層自動切換倒車顯影）。若未額外將鏡頭改為 ACC 穩壓常電或加裝常電 AHD 鏡頭，於 P/D 檔手動開啟影像通道仍會顯示無訊號；`REAR CAMERA` 按鈕支援長按自訂目標套件，方便對應不同版本的 FYT 韌體或外接鏡頭應用。
 
 ---
 
@@ -105,6 +103,28 @@ sequenceDiagram
 
 ---
 
+## 車機語音路由器 (`VoiceTriggerActivity` / `VoiceCommandRouter`)
+
+利用車機內建 Google 語音引擎（`SpeechRecognizer`、`zh-TW`），提供駕駛專用的輕量指令路由懸浮視窗：
+
+- **三種喚醒入口（支援行車中於任何 App 上層喚醒）**：
+  1. 點擊桌面左欄 `VOICE COMMAND` 按鈕。
+  2. 透過 `AutoDriveService.onKeyEvent()` 攔截方向盤方控 `KEYCODE_VOICE_ASSIST` / `KEYCODE_ASSIST`。
+  3. 於方易通「方控學習」將語音鍵綁定開啟 **`Y51 Voice`**（`CATEGORY_LAUNCHER`）或系統 `ACTION_ASSIST` / `ACTION_VOICE_COMMAND`。
+- **音樂閃避降音**：收音時申請 `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK` 降低背景音樂音量，辨識結束立即恢復。
+
+| 口語指令範例 | 解析動作 (`VoiceAction`) | 執行行為 |
+| :--- | :--- | :--- |
+| 「導航到台北101」/「帶我去桃園機場」 | `NavigateSplit` | 啟動 Google Maps 導航並自動維持或進入左 Maps + 右 Spotify 分屏 |
+| 「播放周杰倫」/「我想聽告五人」 | `PlaySpotifySearch` | 透過 `MEDIA_PLAY_FROM_SEARCH` 直接送給 Spotify 搜尋開播 |
+| 「下一首」/「上一首」/「暫停」/「繼續播放」 | `MediaControl` | 發送系統媒體按鍵（`KEYCODE_MEDIA_*`） |
+| 「分屏導航」/「一鍵出發」 | `StartSplitNavigation` / `StartAutoDriveRoutine` | 直接觸發分屏或完整 Auto-Drive 排程 |
+| 「打開神盾」/「原車資訊」/「回桌面」 | `LaunchSpeedcam` / `LaunchVehicleInfo` / `GoHome` | 切換指定車機應用或返回桌面 |
+| 「大聲一點」/「聲音小一點」/「靜音」 | `VolumeControl` | 調整 `STREAM_MUSIC` 音量或靜音切換 |
+| 未匹配指令 / 一般查詢 | `FallbackAssistant` | 保留結果並提供一鍵轉交 Google 語音助理 (`GOOGLE ASSISTANT`) |
+
+---
+
 ## 專案目錄結構
 
 ```text
@@ -115,20 +135,25 @@ infinitiX_CarLauncher/
 │       ├── main/
 │       │   ├── AndroidManifest.xml               # HOME Launcher 註冊與 AutoDriveService 宣告
 │       │   ├── java/com/infiniti/m25launcher/
-│       │   │   ├── MainActivity.kt               # 三欄儀表主畫面、GPS 時速、沉浸式與長按綁定選單
-│       │   │   ├── AutoDriveService.kt           # 喚醒廣播監聽、5 分鐘冷卻與分屏排程服務
-│       │   │   └── AppLauncher.kt                # 套件備援啟動、媒體鍵發送、無障礙狀態檢查
+│       │   │   ├── MainActivity.kt               # 三欄儀表主畫面、GPS 時速與沉浸式控制
+│       │   │   ├── VoiceTriggerActivity.kt       # 液態玻璃語音收音懸浮介面與音訊焦點控制
+│       │   │   ├── VoiceCommandRouter.kt         # 中英口語指令解析與分屏/導航/媒體路由
+│       │   │   ├── AutoDriveService.kt           # 喚醒廣播監聽、方控按鍵攔截與分屏排程服務
+│       │   │   ├── AppLauncher.kt                # 套件備援啟動、媒體鍵發送、無障礙狀態檢查
+│       │   │   ├── DashboardBackdropDrawable.kt  # 低眩光環境光暈底層（提供玻璃折射背景）
+│       │   │   ├── LiquidGlassDrawable.kt        # API 26+ 多層液態玻璃與漸層邊框 Drawable
+│       │   │   └── LiquidGlassStyler.kt          # 儀表卡片與語音 HUD 玻璃樣式套用器
 │       │   └── res/
-│       │       ├── drawable/                     # 4dp 微圓角面板樣式與 1.5dp 單色線性圖示
+│       │       ├── drawable/                     # 面板預設背景與 1.5dp 單色線性圖示
 │       │       ├── layout/
 │       │       │   ├── activity_main.xml         # 1280x480 三欄式橫屏主佈局
-│       │       │   ├── dialog_app_picker.xml     # Fine Vision 深色 App 綁定視窗
-│       │       │   └── item_app_picker.xml       # App 清單列項目
-│       │       ├── values/                       # Fine Vision 色票、字串與無標題全螢幕主題
+│       │       │   └── activity_voice_overlay.xml # 語音路由器懸浮視窗佈局
+│       │       ├── values/                       # Fine Vision 色票、字串與無標題/半透明主題
 │       │       └── xml/
 │       │           └── accessibility_service_config.xml
 │       └── test/java/com/infiniti/m25launcher/
-│           └── AutoDriveLogicTest.kt             # 時速換算、冷卻時間、備援解析與排序單元測試
+│           ├── AutoDriveLogicTest.kt             # 時速換算、冷卻時間、備援解析與玻璃狀態測試
+│           └── VoiceCommandRouterTest.kt         # 語音導航、Spotify 搜尋、媒體與音量解析測試
 ├── docs/
 │   ├── ui_preview_active.png                     # 行車啟動狀態渲染截圖
 │   └── ui_preview_inactive.png                   # 待機狀態渲染截圖
@@ -161,9 +186,9 @@ adb install -r app\build\outputs\apk\debug\app-debug.apk
 ### 3. 車機端初次啟用設定
 
 1. **設為預設車機桌面**：安裝後按車機實體 `HOME` 鍵，選擇 `Y51 DriveOS` 並設為「一律採用」。
-2. **授與精準定位權限**：首次啟動允許定位權限，左欄 GPS 數位時速錶即可即時顯示車速。
+2. **授與定位與麥克風權限**：首次啟動允許定位與錄音權限（左欄 GPS 時速錶與語音路由器使用）。
 3. **啟用無障礙自動管家**：點擊頂部 `INFINITI Y51 | AUTO-DRIVE OFF - TAP TO ENABLE` 跳轉系統無障礙設定，開啟 `Y51 Auto-Drive Service`。
-4. **（選用）自訂後鏡頭套件**：長按中欄右下角 `REAR CAMERA` 卡片，可從車機已安裝清單指定對應的鏡頭或影像 App。
+4. **（選用）設定方向盤方控語音鍵**：於方易通「方控學習」將方向盤語音鍵對應系統語音鍵，或直接綁定啟動 **`Y51 Voice`**，即可於任何畫面按一下方向盤開始講話。
 
 ---
 

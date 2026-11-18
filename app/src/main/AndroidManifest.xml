@@ -4,25 +4,28 @@
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <queries>
         <intent>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VOICE_COMMAND" />
+        </intent>
+        <intent>
+            <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
         </intent>
         <package android:name="tw.com.aegis.speedcam" />
         <package android:name="com.google.android.apps.maps" />
         <package android:name="com.spotify.music" />
         <package android:name="com.syu.carinfo" />
         <package android:name="com.syu.canbus" />
-        <package android:name="com.syu.avm" />
-        <package android:name="com.syu.frontview" />
-        <package android:name="com.syu.dvr" />
-        <package android:name="com.syu.fcam" />
-        <package android:name="com.syu.aux" />
-        <package android:name="com.syu.video" />
     </queries>
 
     <application
@@ -46,6 +49,31 @@
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- 車機語音路由器懸浮介面（支援畫面按鈕、系統 Assist/Voice Intent 與方向盤方控綁定） -->
+        <activity
+            android:name=".VoiceTriggerActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:label="@string/voice_app_label"
+            android:launchMode="singleTop"
+            android:noHistory="true"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.InfinitiVoiceOverlay">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.ASSIST" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VOICE_COMMAND" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
 

@@ -5,9 +5,10 @@
     <color name="surface_panel_pressed">#161920</color>
     <color name="border_hairline">#22252C</color>
     <color name="text_primary">#F2F2F7</color>
-    <color name="text_secondary">#6E7380</color>
+    <color name="text_secondary">#858C9D</color>
     <color name="accent_fine_vision">#7D85E6</color>
     <color name="surface_accent">#12141E</color>
     <color name="surface_accent_pressed">#1A1E2E</color>
     <color name="divider_subtle">#1A1D24</color>
+    <color name="glass_divider">#22FFFFFF</color>
 </resources>

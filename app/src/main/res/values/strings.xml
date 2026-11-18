@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Y51 DriveOS</string>
+    <string name="voice_app_label">Y51 Voice</string>
     <string name="accessibility_service_label">Y51 Auto-Drive Service</string>
-    <string name="accessibility_service_description">Monitors vehicle wake events (SCREEN_ON / USER_PRESENT) and orchestrates Aegis Speedcam, Google Maps + Spotify split-screen navigation, and media playback resumption.</string>
+    <string name="accessibility_service_description">Monitors vehicle wake events (SCREEN_ON / USER_PRESENT), intercepts steering-wheel voice assist keys, and orchestrates Aegis Speedcam, Google Maps + Spotify split-screen navigation, and media playback resumption.</string>
 
     <string name="status_active">INFINITI Y51 | AUTO-DRIVE ACTIVE</string>
     <string name="status_inactive">INFINITI Y51 | AUTO-DRIVE OFF - TAP TO ENABLE</string>
@@ -14,6 +15,7 @@
     <string name="gps_state_lock">LOCK</string>
     <string name="gps_state_disabled">GPS OFF</string>
     <string name="gps_state_no_perm">NO PERMISSION</string>
+    <string name="btn_voice_command">VOICE COMMAND</string>
     <string name="btn_run_split_routine">RUN SPLIT ROUTINE</string>
 
     <string name="tile_split_nav">SPLIT NAVIGATION</string>
@@ -22,17 +24,6 @@
     <string name="tile_speedcam_sub">AEGIS RADAR</string>
     <string name="tile_vehicle_info">VEHICLE INFO</string>
     <string name="tile_vehicle_info_sub">SYU // CANBUS</string>
-    <string name="tile_rear_camera">REAR CAMERA</string>
-    <string name="tile_rear_camera_sub">CAM // HOLD TO BIND</string>
-    <string name="tile_rear_camera_bound_sub">%1$s // HOLD TO BIND</string>
-
-    <string name="picker_rear_cam_title">REAR CAMERA TARGET</string>
-    <string name="picker_rear_cam_subtitle">SELECT SYSTEM CAM APP OR AUTO FALLBACK</string>
-    <string name="picker_auto_fallback_title">AUTO FALLBACK (SYU CAM)</string>
-    <string name="picker_auto_fallback_pkg">avm / frontview / dvr / fcam / aux / video</string>
-    <string name="picker_cancel">CANCEL</string>
-    <string name="msg_rear_cam_bound">Rear camera bound to %1$s</string>
-    <string name="msg_rear_cam_reset">Rear camera set to Auto Fallback</string>
 
     <string name="media_title">SPOTIFY AUDIO</string>
     <string name="media_subtitle">TAP HEADER TO OPEN APP</string>
@@ -44,4 +35,20 @@
     <string name="msg_app_not_installed">Package not installed: %1$s</string>
     <string name="msg_routine_triggered">Auto-Drive routine initiated</string>
     <string name="msg_split_triggered">Split navigation initiated</string>
+
+    <string name="voice_overlay_title">Y51 VOICE ROUTER</string>
+    <string name="voice_status_listening">LISTENING</string>
+    <string name="voice_status_processing">PROCESSING</string>
+    <string name="voice_status_executed">EXECUTED</string>
+    <string name="voice_status_standby">STANDBY</string>
+    <string name="voice_status_error">ERROR</string>
+    <string name="voice_prompt_ready">Speak command: Navigate / Play / Split / Speedcam / Volume</string>
+    <string name="voice_hints">TRY: 導航到...  |  播放...  |  分屏導航  |  下一首  |  打開神盾  |  大聲一點</string>
+    <string name="voice_btn_retry">TAP TO SPEAK</string>
+    <string name="voice_btn_assistant">GOOGLE ASSISTANT</string>
+    <string name="voice_btn_close">CLOSE</string>
+    <string name="voice_err_no_recognizer">Google Speech Service unavailable on this head unit</string>
+    <string name="voice_err_permission">Microphone permission required for voice commands</string>
+    <string name="voice_err_no_match">No command recognized; tap to retry or use Google Assistant</string>
+    <string name="voice_unrecognized">No local route for: %1$s</string>
 </resources>

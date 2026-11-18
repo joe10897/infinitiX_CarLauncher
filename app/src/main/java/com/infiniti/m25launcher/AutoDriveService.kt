@@ -11,11 +11,13 @@ import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityWindowInfo
 
 /**
  * Zero-click automotive automation service.
  * Listens for vehicle wake events (ACTION_SCREEN_ON / ACTION_USER_PRESENT) with a 5-minute
- * monotonic cooldown and orchestrates Speedcam, Maps + Spotify split-screen, and media playback.
+ * monotonic cooldown, intercepts steering-wheel voice assist keys, and orchestrates
+ * Speedcam, Maps + Spotify split-screen, and media playback.
  */
 class AutoDriveService : AccessibilityService() {
 
@@ -53,6 +55,18 @@ class AutoDriveService : AccessibilityService() {
         // Global split-screen actions and wake broadcasts do not require reading window contents.
     }
 
+    override fun onKeyEvent(event: KeyEvent): Boolean {
+        val keyCode = event.keyCode
+        if (keyCode != KeyEvent.KEYCODE_VOICE_ASSIST && keyCode != KeyEvent.KEYCODE_ASSIST) {
+            return false
+        }
+        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+            Log.i(TAG, "Steering wheel voice key intercepted (keyCode=$keyCode)")
+            VoiceTriggerActivity.launch(this)
+        }
+        return true
+    }
+
     override fun onInterrupt() {
         mainHandler.removeCallbacksAndMessages(null)
     }
@@ -82,6 +96,42 @@ class AutoDriveService : AccessibilityService() {
         mainHandler.removeCallbacksAndMessages(null)
         Log.i(TAG, "Manual Split Navigation sequence triggered")
         scheduleMapsSpotifySplit(baseDelayMs = 0L, showMissingToast = true)
+    }
+
+    /**
+     * Launches turn-by-turn Google Maps navigation to [destination] and places Spotify
+     * side-by-side if the head unit is not already in split-screen mode.
+     */
+    fun triggerNavigationWithSplit(destination: String) {
+        mainHandler.removeCallbacksAndMessages(null)
+        val alreadySplit = isCurrentlyInSplitScreen()
+        Log.i(TAG, "Voice navigation to '$destination' (alreadySplit=$alreadySplit)")
+
+        VoiceCommandRouter.launchGoogleMapsNavigation(this, destination)
+        if (!alreadySplit) {
+            mainHandler.postDelayed({
+                val toggled = performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN)
+                Log.d(TAG, "GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN result=$toggled")
+            }, DELAY_SPLIT_TOGGLE_AFTER_VOICE_NAV_MS)
+
+            mainHandler.postDelayed({
+                AppLauncher.launchPackage(
+                    context = this,
+                    primaryPackage = AppLauncher.PKG_SPOTIFY,
+                    extraFlags = Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT,
+                    newTask = true,
+                    showMissingToast = false
+                )
+            }, DELAY_SPLIT_TOGGLE_AFTER_VOICE_NAV_MS + DELAY_SPOTIFY_AFTER_SPLIT_MS)
+        }
+    }
+
+    private fun isCurrentlyInSplitScreen(): Boolean {
+        return try {
+            windows.any { it.type == AccessibilityWindowInfo.TYPE_SPLIT_SCREEN_DIVIDER }
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun scheduleFullAutoDriveRoutine() {
@@ -119,8 +169,10 @@ class AutoDriveService : AccessibilityService() {
 
         val splitToggleAt = baseDelayMs + DELAY_SPLIT_TOGGLE_AFTER_MAPS_MS
         mainHandler.postDelayed({
-            val toggled = performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN)
-            Log.d(TAG, "GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN result=$toggled")
+            if (!isCurrentlyInSplitScreen()) {
+                val toggled = performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN)
+                Log.d(TAG, "GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN result=$toggled")
+            }
         }, splitToggleAt)
 
         val spotifyLaunchAt = splitToggleAt + DELAY_SPOTIFY_AFTER_SPLIT_MS
@@ -167,6 +219,7 @@ class AutoDriveService : AccessibilityService() {
         const val DELAY_SPEEDCAM_MS = 500L
         const val DELAY_MAPS_MS = 2500L
         const val DELAY_SPLIT_TOGGLE_AFTER_MAPS_MS = 1200L
+        const val DELAY_SPLIT_TOGGLE_AFTER_VOICE_NAV_MS = 1400L
         const val DELAY_SPOTIFY_AFTER_SPLIT_MS = 700L
         const val DELAY_MEDIA_PLAY_MS = 5500L
 

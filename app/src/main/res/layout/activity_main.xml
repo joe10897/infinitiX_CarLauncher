@@ -2,6 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/rootDashboard"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg_obsidian"
@@ -11,6 +12,7 @@
 
     <!-- Top Instrument Status Bar -->
     <LinearLayout
+        android:id="@+id/panelTopStatus"
         android:layout_width="match_parent"
         android:layout_height="34dp"
         android:layout_marginBottom="8dp"
@@ -73,7 +75,7 @@
             android:layout_width="1dp"
             android:layout_height="14dp"
             android:layout_marginEnd="12dp"
-            android:background="@color/border_hairline" />
+            android:background="@color/glass_divider" />
 
         <TextClock
             android:id="@+id/clockTime"
@@ -98,6 +100,7 @@
 
         <!-- Left Column (Weight 1.0): GPS Digital Speedometer + Manual Split Routine -->
         <LinearLayout
+            android:id="@+id/panelSpeedometer"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_marginEnd="8dp"
@@ -151,7 +154,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:layout_marginTop="8dp"
-                android:background="@color/divider_subtle" />
+                android:background="@color/glass_divider" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -191,9 +194,42 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/btnVoiceCommand"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:layout_marginBottom="6dp"
+                android:background="@drawable/bg_button_instrument"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp">
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginEnd="8dp"
+                    android:contentDescription="@string/btn_voice_command"
+                    android:src="@drawable/ic_voice_mic" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.12"
+                    android:maxLines="1"
+                    android:text="@string/btn_voice_command"
+                    android:textAllCaps="true"
+                    android:textColor="@color/text_primary"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <LinearLayout
                 android:id="@+id/btnRunSplitRoutine"
                 android:layout_width="match_parent"
-                android:layout_height="44dp"
+                android:layout_height="40dp"
                 android:background="@drawable/bg_button_accent"
                 android:clickable="true"
                 android:focusable="true"
@@ -223,7 +259,7 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Center Column (Weight 1.6): 2x2 Blind-Touch Instrument Grid -->
+        <!-- Center Column (Weight 1.6): 1+2 Blind-Touch Instrument Grid -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
@@ -231,87 +267,87 @@
             android:layout_weight="1.6"
             android:orientation="vertical">
 
-            <!-- Top Row -->
+            <!-- 1. SPLIT NAVIGATION (Full-Width Primary Action) -->
             <LinearLayout
+                android:id="@+id/btnSplitNav"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_marginBottom="8dp"
+                android:layout_weight="1.05"
+                android:background="@drawable/bg_button_instrument"
+                android:clickable="true"
+                android:focusable="true"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:contentDescription="@string/tile_split_nav"
+                        android:src="@drawable/ic_split_nav" />
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="1" />
+
+                    <View
+                        android:layout_width="18dp"
+                        android:layout_height="2dp"
+                        android:background="@color/accent_fine_vision" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.06"
+                    android:maxLines="1"
+                    android:text="@string/tile_split_nav"
+                    android:textAllCaps="true"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:fontFamily="sans-serif"
+                    android:letterSpacing="0.14"
+                    android:maxLines="1"
+                    android:text="@string/tile_split_nav_sub"
+                    android:textAllCaps="true"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="10sp" />
+            </LinearLayout>
+
+            <!-- Bottom Row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
                 android:layout_weight="1"
                 android:baselineAligned="false"
                 android:orientation="horizontal">
-
-                <!-- 1. SPLIT NAVIGATION -->
-                <LinearLayout
-                    android:id="@+id/btnSplitNav"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_marginEnd="8dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/bg_button_instrument"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:orientation="vertical"
-                    android:padding="12dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:contentDescription="@string/tile_split_nav"
-                            android:src="@drawable/ic_split_nav" />
-
-                        <View
-                            android:layout_width="0dp"
-                            android:layout_height="1dp"
-                            android:layout_weight="1" />
-
-                        <View
-                            android:layout_width="14dp"
-                            android:layout_height="2dp"
-                            android:background="@color/accent_fine_vision" />
-                    </LinearLayout>
-
-                    <View
-                        android:layout_width="1dp"
-                        android:layout_height="0dp"
-                        android:layout_weight="1" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:ellipsize="end"
-                        android:fontFamily="sans-serif-medium"
-                        android:letterSpacing="0.06"
-                        android:maxLines="1"
-                        android:text="@string/tile_split_nav"
-                        android:textAllCaps="true"
-                        android:textColor="@color/text_primary"
-                        android:textSize="13sp" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:ellipsize="end"
-                        android:fontFamily="sans-serif"
-                        android:letterSpacing="0.14"
-                        android:maxLines="1"
-                        android:text="@string/tile_split_nav_sub"
-                        android:textAllCaps="true"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="10sp" />
-                </LinearLayout>
 
                 <!-- 2. SPEEDCAM HUD -->
                 <LinearLayout
                     android:id="@+id/btnSpeedcam"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
+                    android:layout_marginEnd="8dp"
                     android:layout_weight="1"
                     android:background="@drawable/bg_button_instrument"
                     android:clickable="true"
@@ -355,22 +391,12 @@
                         android:textColor="@color/text_secondary"
                         android:textSize="10sp" />
                 </LinearLayout>
-            </LinearLayout>
-
-            <!-- Bottom Row -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:baselineAligned="false"
-                android:orientation="horizontal">
 
                 <!-- 3. VEHICLE INFO -->
                 <LinearLayout
                     android:id="@+id/btnVehicleInfo"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
-                    android:layout_marginEnd="8dp"
                     android:layout_weight="1"
                     android:background="@drawable/bg_button_instrument"
                     android:clickable="true"
@@ -414,61 +440,12 @@
                         android:textColor="@color/text_secondary"
                         android:textSize="10sp" />
                 </LinearLayout>
-
-                <!-- 4. REAR CAMERA -->
-                <LinearLayout
-                    android:id="@+id/btnRearCamera"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:background="@drawable/bg_button_instrument"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:orientation="vertical"
-                    android:padding="12dp">
-
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:contentDescription="@string/tile_rear_camera"
-                        android:src="@drawable/ic_rear_camera" />
-
-                    <View
-                        android:layout_width="1dp"
-                        android:layout_height="0dp"
-                        android:layout_weight="1" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:ellipsize="end"
-                        android:fontFamily="sans-serif-medium"
-                        android:letterSpacing="0.06"
-                        android:maxLines="1"
-                        android:text="@string/tile_rear_camera"
-                        android:textAllCaps="true"
-                        android:textColor="@color/text_primary"
-                        android:textSize="13sp" />
-
-                    <TextView
-                        android:id="@+id/tvRearCameraSub"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:ellipsize="end"
-                        android:fontFamily="sans-serif"
-                        android:letterSpacing="0.14"
-                        android:maxLines="1"
-                        android:text="@string/tile_rear_camera_sub"
-                        android:textAllCaps="true"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="10sp" />
-                </LinearLayout>
             </LinearLayout>
         </LinearLayout>
 
         <!-- Right Column (Weight 1.1): Media Control Card -->
         <LinearLayout
+            android:id="@+id/panelMediaControl"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1.1"
@@ -542,7 +519,7 @@
                 android:layout_height="1dp"
                 android:layout_marginTop="8dp"
                 android:layout_marginBottom="8dp"
-                android:background="@color/divider_subtle" />
+                android:background="@color/glass_divider" />
 
             <!-- Primary Blind-Touch PLAY / PAUSE -->
             <LinearLayout
