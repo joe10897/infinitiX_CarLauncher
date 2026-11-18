@@ -8,6 +8,7 @@
     <string name="status_active">INFINITI Y51 | AUTO-DRIVE ACTIVE</string>
     <string name="status_inactive">INFINITI Y51 | AUTO-DRIVE OFF - TAP TO ENABLE</string>
     <string name="header_cluster_tag">Y51 // FINE VISION</string>
+    <string name="btn_settings">SETTINGS</string>
 
     <string name="gps_header">GPS SPEED</string>
     <string name="gps_unit">KM/H</string>

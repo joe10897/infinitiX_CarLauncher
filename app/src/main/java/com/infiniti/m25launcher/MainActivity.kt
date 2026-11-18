@@ -152,6 +152,10 @@ class MainActivity : AppCompatActivity() {
             openAccessibilitySettings()
         }
 
+        findViewById<View>(R.id.btnSettings).setOnClickListener {
+            openSystemSettings()
+        }
+
         layoutGpsHeader.setOnClickListener {
             if (!hasLocationPermission()) {
                 requestStartupPermissions()
@@ -237,6 +241,18 @@ class MainActivity : AppCompatActivity() {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
         )
+    }
+
+    private fun openSystemSettings() {
+        try {
+            startActivity(
+                Intent(Settings.ACTION_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            )
+        } catch (_: Exception) {
+            Toast.makeText(this, R.string.btn_settings, Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun hasLocationPermission(): Boolean {

@@ -48,7 +48,7 @@
 
 ```mermaid
 flowchart LR
-    TOP["頂部狀態列: AUTO-DRIVE 狀態切換點 / Y51 FINE VISION / 即時時鐘"]
+    TOP["頂部狀態列: AUTO-DRIVE 狀態切換點 / Y51 FINE VISION / SETTINGS / 即時時鐘"]
 
     subgraph BODY["1280 x 480 三欄式橫屏儀表主體"]
         direction LR
@@ -65,6 +65,7 @@ flowchart LR
 | 區域 | 元件 / 按鈕 | 對應行為與目標套件 |
 | :--- | :--- | :--- |
 | **頂部狀態列** | Auto-Drive 狀態指示 | 偵測 `AutoDriveService` 啟用狀態；未開啟時點擊直接跳轉 `Settings.ACTION_ACCESSIBILITY_SETTINGS` |
+| **頂部狀態列** | `SETTINGS` 齒輪鍵 | 一鍵跳轉 Android 系統設定（`Settings.ACTION_SETTINGS`），快速管理 Wi-Fi、藍牙與預設桌面 |
 | **頂部狀態列** | 右側即時時鐘 | `TextClock` 自動同步系統 24 小時制時間（`HH:mm`） |
 | **左欄** | GPS 數位時速錶 | 使用 `LocationManager.GPS_PROVIDER` 讀取 `speed * 3.6f` 取整數顯示，支援 `autoSizeTextType="uniform"` |
 | **左欄** | `VOICE COMMAND` | 一鍵啟動內建 Y51 語音路由器收音（亦支援方向盤方控語音鍵全域喚醒） |

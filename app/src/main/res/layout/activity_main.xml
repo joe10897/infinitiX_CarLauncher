@@ -74,6 +74,44 @@
         <View
             android:layout_width="1dp"
             android:layout_height="14dp"
+            android:layout_marginEnd="6dp"
+            android:background="@color/glass_divider" />
+
+        <LinearLayout
+            android:id="@+id/btnSettings"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/bg_status_badge"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp">
+
+            <ImageView
+                android:layout_width="13dp"
+                android:layout_height="13dp"
+                android:layout_marginEnd="6dp"
+                android:contentDescription="@string/btn_settings"
+                android:src="@drawable/ic_settings" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.12"
+                android:maxLines="1"
+                android:text="@string/btn_settings"
+                android:textAllCaps="true"
+                android:textColor="@color/text_primary"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="14dp"
             android:layout_marginEnd="12dp"
             android:background="@color/glass_divider" />
 
