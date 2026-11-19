@@ -29,6 +29,8 @@ object VoiceCommandRouter {
 
     sealed class VoiceAction {
         data class NavigateSplit(val destination: String) : VoiceAction()
+        object NavigateHome : VoiceAction()
+        object NavigateWork : VoiceAction()
         data class PlaySpotifySearch(val query: String) : VoiceAction()
         data class MediaControl(val command: MediaCommand) : VoiceAction()
         data class VolumeControl(val direction: VolumeDirection) : VoiceAction()
@@ -90,8 +92,18 @@ object VoiceCommandRouter {
         if (containsAny(lower, "原車資訊", "車輛資訊", "車況", "行車電腦", "vehicle info", "canbus")) {
             return VoiceAction.LaunchVehicleInfo
         }
-        if (containsAny(lower, "回桌面", "回主畫面", "回首頁", "go home") || lower == "home") {
+        if (containsAny(lower, "回桌面", "回主畫面", "回首頁") || lower == "home") {
             return VoiceAction.GoHome
+        }
+        if (containsAny(lower, "導航回家", "導航到家", "帶我回家", "載我回家", "我要回家", "開回家", "回住處", "navigate home", "go home") ||
+            lower == "回家"
+        ) {
+            return VoiceAction.NavigateHome
+        }
+        if (containsAny(lower, "去公司", "導航到公司", "導航去公司", "導航回公司", "帶我去公司", "我要去公司", "navigate to work", "go to work") ||
+            lower == "上班"
+        ) {
+            return VoiceAction.NavigateWork
         }
 
         // 2. Fixed media transport commands (checked before generic "播放" search prefix)
@@ -148,13 +160,30 @@ object VoiceCommandRouter {
         Log.i(TAG, "Executing voice action: $action")
         return when (action) {
             is VoiceAction.NavigateSplit -> {
-                val service = AutoDriveService.instance
-                if (service != null) {
-                    service.triggerNavigationWithSplit(action.destination)
-                } else {
-                    launchGoogleMapsNavigation(context, action.destination)
-                }
+                navigateDestinationWithSplit(context, action.destination)
                 "NAV SPLIT -> ${action.destination}"
+            }
+
+            VoiceAction.NavigateHome -> {
+                val homeAddress = SavedPlacesStore.getHomeAddress(context)
+                if (homeAddress != null) {
+                    navigateDestinationWithSplit(context, homeAddress)
+                    "NAV HOME -> $homeAddress"
+                } else {
+                    openSavedPlacesSetup(context, R.string.msg_home_not_set)
+                    "SET HOME ADDRESS"
+                }
+            }
+
+            VoiceAction.NavigateWork -> {
+                val workAddress = SavedPlacesStore.getWorkAddress(context)
+                if (workAddress != null) {
+                    navigateDestinationWithSplit(context, workAddress)
+                    "NAV WORK -> $workAddress"
+                } else {
+                    openSavedPlacesSetup(context, R.string.msg_work_not_set)
+                    "SET WORK ADDRESS"
+                }
             }
 
             is VoiceAction.PlaySpotifySearch -> {
@@ -201,7 +230,7 @@ object VoiceCommandRouter {
             }
 
             VoiceAction.LaunchSpeedcam -> {
-                AppLauncher.launchPackage(context, AppLauncher.PKG_SPEEDCAM)
+                AppLauncher.launchSpeedcam(context)
                 "SPEEDCAM HUD"
             }
 
@@ -221,6 +250,15 @@ object VoiceCommandRouter {
             is VoiceAction.FallbackAssistant -> {
                 "UNMATCHED"
             }
+        }
+    }
+
+    private fun navigateDestinationWithSplit(context: Context, destination: String) {
+        val service = AutoDriveService.instance
+        if (service != null) {
+            service.triggerNavigationWithSplit(destination)
+        } else {
+            launchGoogleMapsNavigation(context, destination)
         }
     }
 
@@ -340,6 +378,15 @@ object VoiceCommandRouter {
                 )
             }
         }
+    }
+
+    private fun openSavedPlacesSetup(context: Context, messageResId: Int) {
+        Toast.makeText(context, messageResId, Toast.LENGTH_LONG).show()
+        val intent = Intent(context, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            putExtra(MainActivity.EXTRA_OPEN_SAVED_PLACES, true)
+        }
+        context.startActivity(intent)
     }
 
     private fun openAccessibilityPrompt(context: Context) {

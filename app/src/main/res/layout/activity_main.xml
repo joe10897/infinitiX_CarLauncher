@@ -60,12 +60,19 @@
             android:layout_weight="1" />
 
         <TextView
+            android:id="@+id/tvClusterDrawerTrigger"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="12dp"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/bg_status_badge"
+            android:clickable="true"
+            android:focusable="true"
             android:fontFamily="sans-serif"
+            android:gravity="center_vertical"
             android:letterSpacing="0.16"
             android:maxLines="1"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
             android:text="@string/header_cluster_tag"
             android:textAllCaps="true"
             android:textColor="@color/text_secondary"
@@ -229,6 +236,36 @@
                     android:textAllCaps="true"
                     android:textColor="@color/accent_fine_vision"
                     android:textSize="11sp" />
+
+                <!-- Optical Roadster Speed Telemetry Bar -->
+                <FrameLayout
+                    android:id="@+id/speedBarContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="2dp"
+                    android:layout_marginTop="8dp"
+                    android:background="@color/glass_divider">
+
+                    <View
+                        android:id="@+id/viewSpeedBarFill"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:background="@color/accent_fine_vision" />
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/tvTripTelemetry"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:fontFeatureSettings="tnum"
+                    android:gravity="center"
+                    android:letterSpacing="0.10"
+                    android:maxLines="1"
+                    android:text="@string/trip_telemetry_default"
+                    android:textAllCaps="true"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="9sp" />
             </LinearLayout>
 
             <LinearLayout
@@ -519,11 +556,12 @@
                     android:orientation="vertical">
 
                     <TextView
+                        android:id="@+id/tvMediaTitle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:ellipsize="end"
                         android:fontFamily="sans-serif-medium"
-                        android:letterSpacing="0.10"
+                        android:letterSpacing="0.08"
                         android:maxLines="1"
                         android:text="@string/media_title"
                         android:textAllCaps="true"
@@ -531,14 +569,15 @@
                         android:textSize="12sp" />
 
                     <TextView
+                        android:id="@+id/tvMediaSubtitle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:ellipsize="end"
                         android:fontFamily="sans-serif"
-                        android:letterSpacing="0.14"
+                        android:letterSpacing="0.12"
                         android:maxLines="1"
-                        android:text="@string/media_subtitle"
+                        android:text="@string/media_subtitle_sync_hint"
                         android:textAllCaps="true"
                         android:textColor="@color/text_secondary"
                         android:textSize="9sp" />
@@ -552,12 +591,21 @@
                     android:src="@drawable/ic_spotify_launch" />
             </LinearLayout>
 
-            <View
+            <!-- Optical Media Playback Progress Bar -->
+            <FrameLayout
+                android:id="@+id/mediaProgressContainer"
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
+                android:layout_height="2dp"
                 android:layout_marginTop="8dp"
                 android:layout_marginBottom="8dp"
-                android:background="@color/glass_divider" />
+                android:background="@color/glass_divider">
+
+                <View
+                    android:id="@+id/viewMediaProgressFill"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:background="@color/accent_fine_vision" />
+            </FrameLayout>
 
             <!-- Primary Blind-Touch PLAY / PAUSE -->
             <LinearLayout
@@ -574,6 +622,7 @@
                 android:padding="8dp">
 
                 <ImageView
+                    android:id="@+id/ivMediaPlayPause"
                     android:layout_width="26dp"
                     android:layout_height="26dp"
                     android:layout_marginBottom="6dp"
@@ -581,6 +630,7 @@
                     android:src="@drawable/ic_media_play_pause" />
 
                 <TextView
+                    android:id="@+id/tvMediaPlayPause"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-medium"

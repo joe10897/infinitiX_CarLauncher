@@ -3,6 +3,7 @@
     <string name="app_name">Y51 DriveOS</string>
     <string name="voice_app_label">Y51 Voice</string>
     <string name="accessibility_service_label">Y51 Auto-Drive Service</string>
+    <string name="media_listener_label">Y51 Now-Playing Sync</string>
     <string name="accessibility_service_description">Monitors vehicle wake events (SCREEN_ON / USER_PRESENT), intercepts steering-wheel voice assist keys, and orchestrates Aegis Speedcam, Google Maps + Spotify split-screen navigation, and media playback resumption.</string>
 
     <string name="status_active">INFINITI Y51 | AUTO-DRIVE ACTIVE</string>
@@ -13,9 +14,13 @@
     <string name="gps_header">GPS SPEED</string>
     <string name="gps_unit">KM/H</string>
     <string name="gps_state_searching">SEARCHING</string>
+    <string name="gps_state_weak">WEAK FIX</string>
     <string name="gps_state_lock">LOCK</string>
     <string name="gps_state_disabled">GPS OFF</string>
     <string name="gps_state_no_perm">NO PERMISSION</string>
+    <string name="trip_telemetry_default">MAX 0  •  AVG 0  •  00:00</string>
+    <string name="trip_telemetry_format">MAX %1$d  •  AVG %2$d  •  %3$s</string>
+    <string name="msg_trip_reset">Trip telemetry reset</string>
     <string name="btn_voice_command">VOICE COMMAND</string>
     <string name="btn_run_split_routine">RUN SPLIT ROUTINE</string>
 
@@ -27,10 +32,27 @@
     <string name="tile_vehicle_info_sub">SYU // CANBUS</string>
 
     <string name="media_title">SPOTIFY AUDIO</string>
-    <string name="media_subtitle">TAP HEADER TO OPEN APP</string>
+    <string name="media_subtitle_sync_hint">HOLD TO SYNC TRACK</string>
+    <string name="media_subtitle_idle">READY</string>
     <string name="media_prev">PREV</string>
+    <string name="media_play">PLAY</string>
+    <string name="media_pause">PAUSE</string>
     <string name="media_play_pause">PLAY / PAUSE</string>
     <string name="media_next">NEXT</string>
+
+    <string name="drawer_title">ALL APPLICATIONS</string>
+    <string name="drawer_subtitle">HOLD Y51 // FINE VISION TO ACCESS ANYTIME</string>
+
+    <string name="places_dialog_title">VOICE SAVED PLACES</string>
+    <string name="places_home_label">HOME ADDRESS (SAY: 回家 / 導航回家)</string>
+    <string name="places_home_hint">e.g. 台北市信義區市府路1號</string>
+    <string name="places_work_label">WORK ADDRESS (SAY: 去公司 / 導航到公司)</string>
+    <string name="places_work_hint">e.g. 台北101</string>
+    <string name="places_save">SAVE PLACES</string>
+    <string name="msg_places_saved">Saved Home / Work voice shortcuts</string>
+    <string name="msg_home_not_set">Long-press VOICE COMMAND to set Home address</string>
+    <string name="msg_work_not_set">Long-press VOICE COMMAND to set Work address</string>
+    <string name="msg_enable_media_sync">Enable Y51 Now-Playing Sync in Notification Access</string>
 
     <string name="msg_enable_accessibility">Enable Y51 Auto-Drive Service in Accessibility Settings</string>
     <string name="msg_app_not_installed">Package not installed: %1$s</string>
@@ -44,7 +66,7 @@
     <string name="voice_status_standby">STANDBY</string>
     <string name="voice_status_error">ERROR</string>
     <string name="voice_prompt_ready">Speak command: Navigate / Play / Split / Speedcam / Volume</string>
-    <string name="voice_hints">TRY: 導航到...  |  播放...  |  分屏導航  |  下一首  |  打開神盾  |  大聲一點</string>
+    <string name="voice_hints">TRY: 回家  |  去公司  |  導航到...  |  播放...  |  分屏導航  |  下一首  |  大聲一點</string>
     <string name="voice_btn_retry">TAP TO SPEAK</string>
     <string name="voice_btn_assistant">GOOGLE ASSISTANT</string>
     <string name="voice_btn_close">CLOSE</string>

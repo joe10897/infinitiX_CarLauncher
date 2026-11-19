@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -33,6 +34,7 @@ class VoiceTriggerActivity : AppCompatActivity() {
     private var speechRecognizer: SpeechRecognizer? = null
     private var audioManager: AudioManager? = null
     private var audioFocusRequest: AudioFocusRequest? = null
+    private var toneGenerator: ToneGenerator? = null
     private var isListening = false
 
     private val recordAudioPermissionLauncher = registerForActivityResult(
@@ -48,6 +50,7 @@ class VoiceTriggerActivity : AppCompatActivity() {
     private val recognitionListener = object : RecognitionListener {
         override fun onReadyForSpeech(params: Bundle?) {
             isListening = true
+            playConfirmationTone(ToneGenerator.TONE_PROP_BEEP, 55)
             updateStatus(R.string.voice_status_listening, isAccent = true)
             tvVoiceTranscript.setText(R.string.voice_prompt_ready)
         }
@@ -127,6 +130,7 @@ class VoiceTriggerActivity : AppCompatActivity() {
         mainHandler.removeCallbacksAndMessages(null)
         abandonVoiceAudioFocus()
         destroyRecognizer()
+        releaseToneGenerator()
         super.onDestroy()
     }
 
@@ -227,11 +231,33 @@ class VoiceTriggerActivity : AppCompatActivity() {
         if (bestHeard.isNotEmpty()) {
             tvVoiceTranscript.text = bestHeard
         }
+        playConfirmationTone(ToneGenerator.TONE_PROP_ACK, 85)
         val summary = VoiceCommandRouter.execute(this, action)
         tvVoiceStatus.text = summary
         tvVoiceStatus.setTextColor(ContextCompat.getColor(this, R.color.accent_fine_vision))
 
         mainHandler.postDelayed({ finish() }, AUTO_CLOSE_DELAY_MS)
+    }
+
+    private fun playConfirmationTone(toneType: Int, durationMs: Int) {
+        try {
+            val generator = toneGenerator ?: ToneGenerator(AudioManager.STREAM_NOTIFICATION, 50).also {
+                toneGenerator = it
+            }
+            generator.startTone(toneType, durationMs)
+        } catch (_: Exception) {
+            // Ignore audio HAL unavailability on emulators or busy vendor streams.
+        }
+    }
+
+    private fun releaseToneGenerator() {
+        try {
+            toneGenerator?.release()
+        } catch (_: Exception) {
+            // Ignore cleanup errors.
+        } finally {
+            toneGenerator = null
+        }
     }
 
     private fun showErrorState(message: String) {

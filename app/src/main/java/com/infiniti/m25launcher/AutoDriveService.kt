@@ -1,23 +1,26 @@
 package com.infiniti.m25launcher
 
 import android.accessibilityservice.AccessibilityService
+import android.app.ActivityOptions
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Rect
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 
 /**
  * Zero-click automotive automation service.
  * Listens for vehicle wake events (ACTION_SCREEN_ON / ACTION_USER_PRESENT) with a 5-minute
  * monotonic cooldown, intercepts steering-wheel voice assist keys, and orchestrates
- * Speedcam, Maps + Spotify split-screen, and media playback.
+ * Aegis Speedcam, Google Maps (left) + Spotify (right) split-screen, and media playback.
  */
 class AutoDriveService : AccessibilityService() {
 
@@ -52,12 +55,15 @@ class AutoDriveService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // Global split-screen actions and wake broadcasts do not require reading window contents.
+        // Window trees are inspected on-demand during split-screen docking.
     }
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
         val keyCode = event.keyCode
-        if (keyCode != KeyEvent.KEYCODE_VOICE_ASSIST && keyCode != KeyEvent.KEYCODE_ASSIST) {
+        if (keyCode != KeyEvent.KEYCODE_VOICE_ASSIST &&
+            keyCode != KeyEvent.KEYCODE_ASSIST &&
+            keyCode != KeyEvent.KEYCODE_SEARCH
+        ) {
             return false
         }
         if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
@@ -90,7 +96,7 @@ class AutoDriveService : AccessibilityService() {
     }
 
     /**
-     * Launches Google Maps and Spotify side-by-side in split-screen mode.
+     * Launches Google Maps (left) and Spotify (right) side-by-side in split-screen mode.
      */
     fun triggerSplitNavigationNow() {
         mainHandler.removeCallbacksAndMessages(null)
@@ -99,30 +105,258 @@ class AutoDriveService : AccessibilityService() {
     }
 
     /**
-     * Launches turn-by-turn Google Maps navigation to [destination] and places Spotify
-     * side-by-side if the head unit is not already in split-screen mode.
+     * Launches turn-by-turn Google Maps navigation to [destination] and ensures Spotify
+     * is docked in the right pane without exiting an already active split-screen session.
      */
     fun triggerNavigationWithSplit(destination: String) {
         mainHandler.removeCallbacksAndMessages(null)
         val alreadySplit = isCurrentlyInSplitScreen()
         Log.i(TAG, "Voice navigation to '$destination' (alreadySplit=$alreadySplit)")
 
-        VoiceCommandRouter.launchGoogleMapsNavigation(this, destination)
-        if (!alreadySplit) {
-            mainHandler.postDelayed({
+        if (alreadySplit) {
+            VoiceCommandRouter.launchGoogleMapsNavigation(this, destination)
+            return
+        }
+
+        // Pre-warm Spotify so it becomes the #1 Recents card on FYT SystemUI
+        AppLauncher.launchPackage(
+            context = this,
+            primaryPackage = AppLauncher.PKG_SPOTIFY,
+            newTask = true,
+            showMissingToast = false
+        )
+
+        mainHandler.postDelayed({
+            VoiceCommandRouter.launchGoogleMapsNavigation(this, destination)
+        }, DELAY_MAPS_AFTER_PREWARM_MS)
+
+        val splitToggleAt = DELAY_MAPS_AFTER_PREWARM_MS + DELAY_SPLIT_TOGGLE_AFTER_VOICE_NAV_MS
+        mainHandler.postDelayed({
+            if (!isCurrentlyInSplitScreen()) {
                 val toggled = performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN)
                 Log.d(TAG, "GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN result=$toggled")
-            }, DELAY_SPLIT_TOGGLE_AFTER_VOICE_NAV_MS)
+            }
+        }, splitToggleAt)
 
-            mainHandler.postDelayed({
-                AppLauncher.launchPackage(
-                    context = this,
-                    primaryPackage = AppLauncher.PKG_SPOTIFY,
-                    extraFlags = Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT,
-                    newTask = true,
-                    showMissingToast = false
-                )
-            }, DELAY_SPLIT_TOGGLE_AFTER_VOICE_NAV_MS + DELAY_SPOTIFY_AFTER_SPLIT_MS)
+        scheduleRightPaneSpotifyDock(
+            startAtMs = splitToggleAt + DELAY_SPOTIFY_AFTER_SPLIT_MS,
+            showMissingToast = false
+        )
+    }
+
+    private fun scheduleFullAutoDriveRoutine() {
+        mainHandler.removeCallbacksAndMessages(null)
+
+        // 0.5s: Launch Aegis Speedcam (tw.com.ainvest.outpack + fallback)
+        mainHandler.postDelayed({
+            AppLauncher.launchSpeedcam(this, showMissingToast = false)
+        }, DELAY_SPEEDCAM_MS)
+
+        // 2.2s: Pre-warm Spotify -> +0.9s Google Maps -> +1.2s split toggle -> dock Spotify right
+        val splitEndAt = scheduleMapsSpotifySplit(
+            baseDelayMs = DELAY_ROUTINE_SPLIT_START_MS,
+            showMissingToast = false
+        )
+
+        // Resume media playback after Spotify is docked on the right pane
+        mainHandler.postDelayed({
+            AppLauncher.dispatchMediaKey(this, KeyEvent.KEYCODE_MEDIA_PLAY)
+            Log.d(TAG, "Dispatched KEYCODE_MEDIA_PLAY to resume audio")
+        }, splitEndAt + DELAY_MEDIA_PLAY_AFTER_DOCK_MS)
+    }
+
+    /**
+     * Pre-warms Spotify so FYT's right-half Recents puts Spotify first, then opens Maps,
+     * toggles split-screen, and docks Spotify cleanly into the right pane.
+     * Returns the scheduled timestamp (relative to now) when right-pane docking finishes.
+     */
+    private fun scheduleMapsSpotifySplit(baseDelayMs: Long, showMissingToast: Boolean): Long {
+        // Step 1: Pre-warm Spotify into top of Recents
+        mainHandler.postDelayed({
+            AppLauncher.launchPackage(
+                context = this,
+                primaryPackage = AppLauncher.PKG_SPOTIFY,
+                newTask = true,
+                showMissingToast = false
+            )
+        }, baseDelayMs)
+
+        // Step 2: Open Google Maps as primary foreground task
+        val mapsAt = baseDelayMs + DELAY_MAPS_AFTER_PREWARM_MS
+        mainHandler.postDelayed({
+            AppLauncher.launchPackage(
+                context = this,
+                primaryPackage = AppLauncher.PKG_MAPS,
+                newTask = true,
+                showMissingToast = showMissingToast
+            )
+        }, mapsAt)
+
+        // Step 3: Enter split-screen (Maps docks left; FYT Recents with Spotify #1 opens right)
+        val splitToggleAt = mapsAt + DELAY_SPLIT_TOGGLE_AFTER_MAPS_MS
+        mainHandler.postDelayed({
+            if (!isCurrentlyInSplitScreen()) {
+                val toggled = performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN)
+                Log.d(TAG, "GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN result=$toggled")
+            }
+        }, splitToggleAt)
+
+        // Step 4: Dock Spotify into right pane via Recents click or adjacent+multiple_task fallback
+        val dockAt = splitToggleAt + DELAY_SPOTIFY_AFTER_SPLIT_MS
+        return scheduleRightPaneSpotifyDock(dockAt, showMissingToast)
+    }
+
+    private fun scheduleRightPaneSpotifyDock(startAtMs: Long, showMissingToast: Boolean): Long {
+        mainHandler.postDelayed({
+            if (isPackageDockedOnRight(AppLauncher.PKG_SPOTIFY)) {
+                Log.d(TAG, "Spotify is already docked on the right pane")
+                return@postDelayed
+            }
+            val clickedRecents = tryClickSpotifyInRightRecents()
+            Log.d(TAG, "Right-pane Recents click attempt result=$clickedRecents")
+        }, startAtMs)
+
+        val fallbackAt = startAtMs + DELAY_RIGHT_PANE_VERIFY_MS
+        mainHandler.postDelayed({
+            if (!isPackageDockedOnRight(AppLauncher.PKG_SPOTIFY)) {
+                Log.i(TAG, "Spotify not yet on right pane; launching with ADJACENT + MULTIPLE_TASK + right bounds")
+                launchSpotifyToRightBounds(showMissingToast)
+            }
+        }, fallbackAt)
+
+        return fallbackAt
+    }
+
+    private fun launchSpotifyToRightBounds(showMissingToast: Boolean) {
+        val dm = resources.displayMetrics
+        val rightHalf = Rect(dm.widthPixels / 2, 0, dm.widthPixels, dm.heightPixels)
+        val options = try {
+            ActivityOptions.makeBasic().setLaunchBounds(rightHalf).toBundle()
+        } catch (_: Exception) {
+            null
+        }
+        AppLauncher.launchPackage(
+            context = this,
+            primaryPackage = AppLauncher.PKG_SPOTIFY,
+            extraFlags = Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK,
+            newTask = true,
+            showMissingToast = showMissingToast,
+            optionsBundle = options
+        )
+    }
+
+    private fun tryClickSpotifyInRightRecents(): Boolean {
+        val dm = resources.displayMetrics
+        val screenW = dm.widthPixels
+        val screenH = dm.heightPixels
+        if (screenW <= 0 || screenH <= 0) return false
+
+        val rightWindows = try {
+            windows.filter { win ->
+                if (win.type == AccessibilityWindowInfo.TYPE_SPLIT_SCREEN_DIVIDER ||
+                    win.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD
+                ) {
+                    return@filter false
+                }
+                val r = Rect()
+                win.getBoundsInScreen(r)
+                r.right > screenW / 2 && r.left >= screenW / 3
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+
+        // Pass 1: Explicit "Spotify" node match in right-half Recents
+        for (win in rightWindows) {
+            val root = win.root ?: continue
+            val match = findNodeMatchingLabel(root, "spotify", screenW)
+            if (match != null && clickSelfOrAncestor(match)) {
+                return true
+            }
+        }
+
+        // Pass 2: Leftmost large task-preview card in right-half Recents (above trash-can bar)
+        val candidateCards = ArrayList<Pair<Int, AccessibilityNodeInfo>>()
+        for (win in rightWindows) {
+            val root = win.root ?: continue
+            collectRightPaneRecentsCards(root, screenW, screenH, candidateCards)
+        }
+        val firstCard = candidateCards.minByOrNull { it.first }?.second
+        return firstCard != null && clickSelfOrAncestor(firstCard)
+    }
+
+    private fun findNodeMatchingLabel(
+        node: AccessibilityNodeInfo,
+        needleLower: String,
+        screenW: Int
+    ): AccessibilityNodeInfo? {
+        val bounds = Rect()
+        node.getBoundsInScreen(bounds)
+        val textMatch = node.text?.toString()?.lowercase()?.contains(needleLower) == true
+        val descMatch = node.contentDescription?.toString()?.lowercase()?.contains(needleLower) == true
+        if ((textMatch || descMatch) && bounds.centerX() >= screenW / 2) {
+            return node
+        }
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            val found = findNodeMatchingLabel(child, needleLower, screenW)
+            if (found != null) return found
+        }
+        return null
+    }
+
+    private fun collectRightPaneRecentsCards(
+        node: AccessibilityNodeInfo,
+        screenW: Int,
+        screenH: Int,
+        out: MutableList<Pair<Int, AccessibilityNodeInfo>>
+    ) {
+        val bounds = Rect()
+        node.getBoundsInScreen(bounds)
+        val isLargeCardInRightUpperArea = node.isClickable &&
+            bounds.left >= screenW / 2 &&
+            bounds.width() >= screenW / 8 &&
+            bounds.height() >= screenH / 4 &&
+            bounds.top >= screenH / 10 &&
+            bounds.bottom <= (screenH * 0.72f).toInt()
+
+        if (isLargeCardInRightUpperArea) {
+            out.add(bounds.left to node)
+            return
+        }
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            collectRightPaneRecentsCards(child, screenW, screenH, out)
+        }
+    }
+
+    private fun clickSelfOrAncestor(node: AccessibilityNodeInfo): Boolean {
+        var current: AccessibilityNodeInfo? = node
+        var depth = 0
+        while (current != null && depth < 6) {
+            if (current.isClickable) {
+                return current.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            }
+            current = current.parent
+            depth++
+        }
+        return node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+    }
+
+    private fun isPackageDockedOnRight(targetPackage: String): Boolean {
+        val screenW = resources.displayMetrics.widthPixels
+        if (screenW <= 0) return false
+        return try {
+            windows.any { win ->
+                if (win.type != AccessibilityWindowInfo.TYPE_APPLICATION) return@any false
+                val pkg = win.root?.packageName?.toString()
+                if (pkg != targetPackage) return@any false
+                val rect = Rect()
+                win.getBoundsInScreen(rect)
+                rect.left >= screenW / 3
+            }
+        } catch (_: Exception) {
+            false
         }
     }
 
@@ -132,59 +366,6 @@ class AutoDriveService : AccessibilityService() {
         } catch (_: Exception) {
             false
         }
-    }
-
-    private fun scheduleFullAutoDriveRoutine() {
-        mainHandler.removeCallbacksAndMessages(null)
-
-        // 0.5s: Launch Aegis Speedcam
-        mainHandler.postDelayed({
-            AppLauncher.launchPackage(
-                context = this,
-                primaryPackage = AppLauncher.PKG_SPEEDCAM,
-                newTask = true,
-                showMissingToast = false
-            )
-        }, DELAY_SPEEDCAM_MS)
-
-        // 2.5s: Launch Google Maps -> +1.2s toggle split screen -> +0.7s launch Spotify adjacent
-        scheduleMapsSpotifySplit(baseDelayMs = DELAY_MAPS_MS, showMissingToast = false)
-
-        // 5.5s: Resume media playback via KEYCODE_MEDIA_PLAY
-        mainHandler.postDelayed({
-            AppLauncher.dispatchMediaKey(this, KeyEvent.KEYCODE_MEDIA_PLAY)
-            Log.d(TAG, "Dispatched KEYCODE_MEDIA_PLAY to resume audio")
-        }, DELAY_MEDIA_PLAY_MS)
-    }
-
-    private fun scheduleMapsSpotifySplit(baseDelayMs: Long, showMissingToast: Boolean) {
-        mainHandler.postDelayed({
-            AppLauncher.launchPackage(
-                context = this,
-                primaryPackage = AppLauncher.PKG_MAPS,
-                newTask = true,
-                showMissingToast = showMissingToast
-            )
-        }, baseDelayMs)
-
-        val splitToggleAt = baseDelayMs + DELAY_SPLIT_TOGGLE_AFTER_MAPS_MS
-        mainHandler.postDelayed({
-            if (!isCurrentlyInSplitScreen()) {
-                val toggled = performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN)
-                Log.d(TAG, "GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN result=$toggled")
-            }
-        }, splitToggleAt)
-
-        val spotifyLaunchAt = splitToggleAt + DELAY_SPOTIFY_AFTER_SPLIT_MS
-        mainHandler.postDelayed({
-            AppLauncher.launchPackage(
-                context = this,
-                primaryPackage = AppLauncher.PKG_SPOTIFY,
-                extraFlags = Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT,
-                newTask = true,
-                showMissingToast = showMissingToast
-            )
-        }, spotifyLaunchAt)
     }
 
     private fun registerWakeReceiverIfNeeded() {
@@ -217,11 +398,13 @@ class AutoDriveService : AccessibilityService() {
 
         const val COOLDOWN_MS = 5 * 60 * 1000L
         const val DELAY_SPEEDCAM_MS = 500L
-        const val DELAY_MAPS_MS = 2500L
+        const val DELAY_ROUTINE_SPLIT_START_MS = 2200L
+        const val DELAY_MAPS_AFTER_PREWARM_MS = 900L
         const val DELAY_SPLIT_TOGGLE_AFTER_MAPS_MS = 1200L
         const val DELAY_SPLIT_TOGGLE_AFTER_VOICE_NAV_MS = 1400L
-        const val DELAY_SPOTIFY_AFTER_SPLIT_MS = 700L
-        const val DELAY_MEDIA_PLAY_MS = 5500L
+        const val DELAY_SPOTIFY_AFTER_SPLIT_MS = 800L
+        const val DELAY_RIGHT_PANE_VERIFY_MS = 700L
+        const val DELAY_MEDIA_PLAY_AFTER_DOCK_MS = 1000L
 
         @Volatile
         var instance: AutoDriveService? = null

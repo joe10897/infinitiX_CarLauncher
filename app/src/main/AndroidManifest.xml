@@ -10,6 +10,10 @@
 
     <queries>
         <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
             <action android:name="android.speech.RecognitionService" />
         </intent>
         <intent>
@@ -21,6 +25,7 @@
         <intent>
             <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
         </intent>
+        <package android:name="tw.com.ainvest.outpack" />
         <package android:name="tw.com.aegis.speedcam" />
         <package android:name="com.google.android.apps.maps" />
         <package android:name="com.spotify.music" />
@@ -42,6 +47,7 @@
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:exported="true"
             android:launchMode="singleTask"
+            android:resizeableActivity="true"
             android:screenOrientation="landscape"
             android:stateNotNeeded="true">
             <intent-filter>
@@ -89,6 +95,17 @@
             <meta-data
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <!-- 即時媒體播放狀態監聽服務（選配，用於右欄顯示曲目、歌手與進度條） -->
+        <service
+            android:name=".MediaNotificationService"
+            android:exported="true"
+            android:label="@string/media_listener_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
         </service>
 
     </application>

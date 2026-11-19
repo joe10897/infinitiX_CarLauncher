@@ -31,7 +31,9 @@ class LiquidGlassDrawable(
         /** Recessed inner glass sub-buttons (PREV / NEXT, dialog rows). */
         SUB_PANEL,
         /** Highlighted action glass (RUN SPLIT ROUTINE, PLAY / PAUSE). */
-        ACCENT
+        ACCENT,
+        /** High-opacity smoked glass for floating modals (Voice HUD, App Drawer, Saved Places). */
+        MODAL
     }
 
     private val cornerRadiusPx = cornerRadiusDp * density
@@ -187,6 +189,11 @@ class LiquidGlassDrawable(
                 Color.parseColor("#9C181D3B"),
                 Color.parseColor("#B012162C")
             )
+            variant == Variant.MODAL -> intArrayOf(
+                Color.parseColor("#EA121622"),
+                Color.parseColor("#F00C0F18"),
+                Color.parseColor("#F5080A10")
+            )
             variant == Variant.SUB_PANEL -> intArrayOf(
                 Color.parseColor("#751B2030"),
                 Color.parseColor("#8A141824"),
@@ -213,6 +220,12 @@ class LiquidGlassDrawable(
                 Color.parseColor("#667D85E6"),
                 Color.parseColor("#387D85E6"),
                 Color.parseColor("#8C9EA6FF")
+            )
+            variant == Variant.MODAL -> intArrayOf(
+                Color.parseColor("#90FFFFFF"),
+                Color.parseColor("#44A4AEFF"),
+                Color.parseColor("#24FFFFFF"),
+                Color.parseColor("#707D85E6")
             )
             variant == Variant.SUB_PANEL -> intArrayOf(
                 Color.parseColor("#5CFFFFFF"),

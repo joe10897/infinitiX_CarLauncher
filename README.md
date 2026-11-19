@@ -65,16 +65,17 @@ flowchart LR
 | 區域 | 元件 / 按鈕 | 對應行為與目標套件 |
 | :--- | :--- | :--- |
 | **頂部狀態列** | Auto-Drive 狀態指示 | 偵測 `AutoDriveService` 啟用狀態；未開啟時點擊直接跳轉 `Settings.ACTION_ACCESSIBILITY_SETTINGS` |
+| **頂部狀態列** | `Y51 // FINE VISION` | 隱藏手勢：**長按開啟「全部應用程式抽屜」**（4 欄液態玻璃清單） |
 | **頂部狀態列** | `SETTINGS` 齒輪鍵 | 一鍵跳轉 Android 系統設定（`Settings.ACTION_SETTINGS`），快速管理 Wi-Fi、藍牙與預設桌面 |
 | **頂部狀態列** | 右側即時時鐘 | `TextClock` 自動同步系統 24 小時制時間（`HH:mm`） |
-| **左欄** | GPS 數位時速錶 | 使用 `LocationManager.GPS_PROVIDER` 讀取 `speed * 3.6f` 取整數顯示，支援 `autoSizeTextType="uniform"` |
-| **左欄** | `VOICE COMMAND` | 一鍵啟動內建 Y51 語音路由器收音（亦支援方向盤方控語音鍵全域喚醒） |
+| **左欄** | GPS 數位時速與單趟微數據 | 內建 `< 2 km/h` 靜止漂移濾波、精度狀態（`LOCK` / `WEAK FIX`）、光學速度條與 `MAX / AVG / TIME` 單趟數據（長按 `GPS SPEED` 可歸零） |
+| **左欄** | `VOICE COMMAND` | 短按一鍵啟動語音路由器；**長按編輯「回家 / 去公司」語音快捷地址** |
 | **左欄** | `RUN SPLIT ROUTINE` | 手動觸發完整行車自動化流程（略過 5 分鐘冷卻限制） |
 | **中欄上排** | `SPLIT NAVIGATION` | 寬幅主操作卡，啟動 Google Maps 並由無障礙服務觸發左右分屏，並排啟動 Spotify |
-| **中欄下左** | `SPEEDCAM HUD` | 啟動神盾測速照相（`tw.com.aegis.speedcam`） |
+| **中欄下左** | `SPEEDCAM HUD` | 啟動神盾測速照相（`tw.com.ainvest.outpack`，備援 `tw.com.aegis.speedcam` 與「神盾」標籤搜尋） |
 | **中欄下右** | `VEHICLE INFO` | 啟動方易通原車資訊（`com.syu.carinfo`，若未安裝則 fallback 至 `com.syu.canbus`） |
-| **右欄** | `SPOTIFY AUDIO` 標題 | 點擊開啟 Spotify（`com.spotify.music`） |
-| **右欄** | `PLAY / PAUSE`、`PREV`、`NEXT` | 透過 `AudioManager.dispatchMediaKeyEvent` 發送 `ACTION_DOWN` + `ACTION_UP` 系統媒體按鍵 |
+| **右欄** | 即時曲目標題與光學進度條 | 搭配 `MediaNotificationService` 同步顯示曲名、歌手與播放進度條；短按開啟 Spotify，**長按跳轉通知存取設定啟用曲目同步** |
+| **右欄** | `PLAY / PAUSE`、`PREV`、`NEXT` | 透過 `AudioManager.dispatchMediaKeyEvent` 控制播放，並依即時播放狀態切換 `PLAY` / `PAUSE` 圖示與標籤 |
 
 ---
 
@@ -94,11 +95,12 @@ sequenceDiagram
     Note over ADS: 採用單調開機時鐘，避免 GPS/NTP 校時造成冷卻誤判
 
     rect rgb(15, 17, 21)
-        ADS->>APP: 0.5s - 啟動神盾測速 (tw.com.aegis.speedcam)
-        ADS->>APP: 2.5s - 啟動 Google Maps (com.google.android.apps.maps)
-        ADS->>SYS: 3.7s (+1.2s) - performGlobalAction(TOGGLE_SPLIT_SCREEN)
-        ADS->>APP: 4.4s (+0.7s) - FLAG_ACTIVITY_LAUNCH_ADJACENT 啟動 Spotify
-        ADS->>AUD: 5.5s - dispatchMediaKeyEvent(KEYCODE_MEDIA_PLAY)
+        ADS->>APP: 0.5s - 啟動神盾測速 (tw.com.ainvest.outpack)
+        ADS->>APP: 2.2s - 預熱 Spotify 進入最近任務第一位
+        ADS->>APP: 3.1s - 啟動 Google Maps (com.google.android.apps.maps)
+        ADS->>SYS: 4.3s - performGlobalAction(TOGGLE_SPLIT_SCREEN)
+        ADS->>APP: 5.1s - 點擊右側最近任務 Spotify 卡片 (或 ADJACENT+MULTIPLE_TASK 備援)
+        ADS->>AUD: 6.8s - dispatchMediaKeyEvent(KEYCODE_MEDIA_PLAY)
     end
 ```
 
@@ -116,6 +118,7 @@ sequenceDiagram
 
 | 口語指令範例 | 解析動作 (`VoiceAction`) | 執行行為 |
 | :--- | :--- | :--- |
+| 「回家」/「導航回家」/「去公司」/「導航到公司」 | `NavigateHome` / `NavigateWork` | 讀取已儲存的住家／公司地址並自動進入左 Maps + 右 Spotify 導航分屏 |
 | 「導航到台北101」/「帶我去桃園機場」 | `NavigateSplit` | 啟動 Google Maps 導航並自動維持或進入左 Maps + 右 Spotify 分屏 |
 | 「播放周杰倫」/「我想聽告五人」 | `PlaySpotifySearch` | 透過 `MEDIA_PLAY_FROM_SEARCH` 直接送給 Spotify 搜尋開播 |
 | 「下一首」/「上一首」/「暫停」/「繼續播放」 | `MediaControl` | 發送系統媒體按鍵（`KEYCODE_MEDIA_*`） |
@@ -136,14 +139,18 @@ infinitiX_CarLauncher/
 │       ├── main/
 │       │   ├── AndroidManifest.xml               # HOME Launcher 註冊與 AutoDriveService 宣告
 │       │   ├── java/com/infiniti/m25launcher/
-│       │   │   ├── MainActivity.kt               # 三欄儀表主畫面、GPS 時速與沉浸式控制
-│       │   │   ├── VoiceTriggerActivity.kt       # 液態玻璃語音收音懸浮介面與音訊焦點控制
+│       │   │   ├── MainActivity.kt               # 三欄儀表主畫面、GPS 時速、即時媒體、抽屜與快捷彈窗
+│       │   │   ├── TripTelemetryTracker.kt       # GPS 低速去雜訊與單趟最高速/均速/時間統計
+│       │   │   ├── MediaNotificationService.kt   # 系統通知監聽錨點服務（供 MediaSession 存取）
+│       │   │   ├── MediaSessionMonitor.kt        # Spotify / 系統媒體曲目、狀態與進度條同步
+│       │   │   ├── SavedPlacesStore.kt           # 語音「回家 / 去公司」地址本地儲存
+│       │   │   ├── VoiceTriggerActivity.kt       # 液態玻璃語音收音懸浮介面、音訊閃避與提示音
 │       │   │   ├── VoiceCommandRouter.kt         # 中英口語指令解析與分屏/導航/媒體路由
 │       │   │   ├── AutoDriveService.kt           # 喚醒廣播監聽、方控按鍵攔截與分屏排程服務
-│       │   │   ├── AppLauncher.kt                # 套件備援啟動、媒體鍵發送、無障礙狀態檢查
+│       │   │   ├── AppLauncher.kt                # 套件備援啟動、全部 App 查詢、媒體鍵發送與全螢幕控制
 │       │   │   ├── DashboardBackdropDrawable.kt  # 低眩光環境光暈底層（提供玻璃折射背景）
 │       │   │   ├── LiquidGlassDrawable.kt        # API 26+ 多層液態玻璃與漸層邊框 Drawable
-│       │   │   └── LiquidGlassStyler.kt          # 儀表卡片與語音 HUD 玻璃樣式套用器
+│       │   │   └── LiquidGlassStyler.kt          # 儀表卡片、語音 HUD 與抽屜彈窗玻璃樣式套用器
 │       │   └── res/
 │       │       ├── drawable/                     # 面板預設背景與 1.5dp 單色線性圖示
 │       │       ├── layout/

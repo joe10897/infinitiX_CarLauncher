@@ -5,7 +5,7 @@ import com.infiniti.m25launcher.LiquidGlassDrawable.Variant
 
 /**
  * Applies Fine Vision Liquid Glass surfaces and ambient backdrop consistently across
- * the dashboard layout and voice router HUD.
+ * the dashboard layout, voice HUD, saved-places editor, and hidden app drawer.
  */
 object LiquidGlassStyler {
 
@@ -31,10 +31,31 @@ object LiquidGlassStyler {
     }
 
     fun applyToVoiceOverlay(rootView: View) {
-        applyGlass(rootView, R.id.panelVoiceRouter, CORNER_PANEL_DP, Variant.PANEL)
+        applyGlass(rootView, R.id.panelVoiceRouter, CORNER_PANEL_DP, Variant.MODAL)
         applyGlass(rootView, R.id.btnVoiceClose, CORNER_SUB_DP, Variant.SUB_PANEL)
         applyGlass(rootView, R.id.btnVoiceRetry, CORNER_SUB_DP, Variant.ACCENT)
         applyGlass(rootView, R.id.btnVoiceAssistant, CORNER_SUB_DP, Variant.SUB_PANEL)
+    }
+
+    fun applyToAppDrawer(dialogRoot: View) {
+        applyGlass(dialogRoot, R.id.panelAppDrawer, CORNER_PANEL_DP, Variant.MODAL)
+        applyGlass(dialogRoot, R.id.btnDrawerClose, CORNER_SUB_DP, Variant.SUB_PANEL)
+    }
+
+    fun applyToDrawerTile(tileView: View) {
+        tileView.background = LiquidGlassDrawable(
+            cornerRadiusDp = CORNER_SUB_DP,
+            variant = Variant.SUB_PANEL,
+            density = tileView.resources.displayMetrics.density
+        )
+    }
+
+    fun applyToSavedPlacesDialog(dialogRoot: View) {
+        applyGlass(dialogRoot, R.id.panelSavedPlaces, CORNER_PANEL_DP, Variant.MODAL)
+        applyGlass(dialogRoot, R.id.btnPlacesCancel, CORNER_SUB_DP, Variant.SUB_PANEL)
+        applyGlass(dialogRoot, R.id.btnPlacesSave, CORNER_SUB_DP, Variant.ACCENT)
+        applyGlass(dialogRoot, R.id.etHomeAddress, CORNER_SUB_DP, Variant.SUB_PANEL)
+        applyGlass(dialogRoot, R.id.etWorkAddress, CORNER_SUB_DP, Variant.SUB_PANEL)
     }
 
     private fun applyGlass(parent: View, viewId: Int, radiusDp: Float, variant: Variant) {

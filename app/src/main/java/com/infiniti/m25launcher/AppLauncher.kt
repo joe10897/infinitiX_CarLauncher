@@ -4,6 +4,8 @@ import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.drawable.Drawable
 import android.media.AudioManager
 import android.os.Build
 import android.os.SystemClock
@@ -26,11 +28,52 @@ object AppLauncher {
 
     private const val TAG = "Y51AppLauncher"
 
-    const val PKG_SPEEDCAM = "tw.com.aegis.speedcam"
+    const val PKG_SPEEDCAM = "tw.com.ainvest.outpack"
+    const val PKG_SPEEDCAM_LEGACY = "tw.com.aegis.speedcam"
     const val PKG_MAPS = "com.google.android.apps.maps"
     const val PKG_SPOTIFY = "com.spotify.music"
     const val PKG_CAR_INFO = "com.syu.carinfo"
     const val PKG_CANBUS = "com.syu.canbus"
+
+    val SPEEDCAM_CANDIDATES = listOf(PKG_SPEEDCAM, PKG_SPEEDCAM_LEGACY)
+
+    data class DrawerAppItem(
+        val label: String,
+        val packageName: String,
+        val icon: Drawable
+    )
+
+    /**
+     * Queries all launchable apps on the head unit (excluding this launcher) for the hidden drawer.
+     */
+    @Suppress("DEPRECATION")
+    fun queryDrawerApps(context: Context): List<DrawerAppItem> {
+        val pm = context.packageManager
+        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        val activities = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            pm.queryIntentActivities(
+                intent,
+                PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_ALL.toLong())
+            )
+        } else {
+            pm.queryIntentActivities(intent, 0)
+        }
+
+        val seen = HashSet<String>()
+        val items = ArrayList<DrawerAppItem>()
+        for (info in activities) {
+            val pkg = info.activityInfo?.packageName ?: continue
+            if (pkg == context.packageName || !seen.add(pkg)) continue
+            val label = info.loadLabel(pm)?.toString()?.trim().takeUnless { it.isNullOrEmpty() } ?: pkg
+            val icon = try {
+                info.loadIcon(pm)
+            } catch (_: Exception) {
+                continue
+            }
+            items.add(DrawerAppItem(label = label, packageName = pkg, icon = icon))
+        }
+        return items.sortedBy { it.label.lowercase() }
+    }
 
     /**
      * Converts meters-per-second GPS speed to an integer km/h reading.
@@ -57,9 +100,46 @@ object AppLauncher {
     }
 
     /**
+     * Launches Aegis Speedcam by known package IDs first, then falls back to matching
+     * installed launchable app labels containing "神盾" or "speedcam".
+     */
+    fun launchSpeedcam(context: Context, showMissingToast: Boolean = true): Boolean {
+        if (launchPackage(
+                context = context,
+                primaryPackage = PKG_SPEEDCAM,
+                fallbackPackage = PKG_SPEEDCAM_LEGACY,
+                showMissingToast = false
+            )
+        ) {
+            return true
+        }
+
+        val labelMatch = queryDrawerApps(context).firstOrNull { app ->
+            val lowerLabel = app.label.lowercase()
+            app.label.contains("神盾") || lowerLabel.contains("speedcam")
+        }
+        if (labelMatch != null) {
+            return launchPackage(
+                context = context,
+                primaryPackage = labelMatch.packageName,
+                showMissingToast = showMissingToast
+            )
+        }
+
+        if (showMissingToast) {
+            Toast.makeText(
+                context,
+                context.getString(R.string.msg_app_not_installed, SPEEDCAM_CANDIDATES.joinToString(" / ")),
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+        return false
+    }
+
+    /**
      * Launches [primaryPackage], falling back to [fallbackPackage] if unavailable.
-     * Applies [extraFlags] (such as [Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT]) and
-     * automatically adds [Intent.FLAG_ACTIVITY_NEW_TASK] when [newTask] is true.
+     * Applies [extraFlags] (such as [Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT]) and optional [optionsBundle],
+     * automatically adding [Intent.FLAG_ACTIVITY_NEW_TASK] when [newTask] is true.
      */
     fun launchPackage(
         context: Context,
@@ -67,7 +147,8 @@ object AppLauncher {
         fallbackPackage: String? = null,
         extraFlags: Int = 0,
         newTask: Boolean = true,
-        showMissingToast: Boolean = true
+        showMissingToast: Boolean = true,
+        optionsBundle: android.os.Bundle? = null
     ): Boolean {
         val candidates = listOfNotNull(primaryPackage, fallbackPackage)
         val pm = context.packageManager
@@ -97,7 +178,11 @@ object AppLauncher {
         }
 
         return try {
-            context.startActivity(intent)
+            if (optionsBundle != null) {
+                context.startActivity(intent, optionsBundle)
+            } else {
+                context.startActivity(intent)
+            }
             Log.d(TAG, "Launched package: $pkgName")
             true
         } catch (e: Exception) {

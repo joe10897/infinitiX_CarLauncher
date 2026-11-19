@@ -60,6 +60,13 @@ class VoiceCommandRouterTest {
         assertEquals(VoiceAction.LaunchSpeedcam, VoiceCommandRouter.parse("打開神盾測速"))
         assertEquals(VoiceAction.LaunchVehicleInfo, VoiceCommandRouter.parse("查看原車資訊"))
         assertEquals(VoiceAction.GoHome, VoiceCommandRouter.parse("回桌面"))
+        assertEquals(VoiceAction.NavigateHome, VoiceCommandRouter.parse("回家"))
+        assertEquals(VoiceAction.NavigateHome, VoiceCommandRouter.parse("導航回家"))
+        assertEquals(VoiceAction.NavigateHome, VoiceCommandRouter.parse("導航到家"))
+        assertEquals(VoiceAction.NavigateHome, VoiceCommandRouter.parse("我要回家"))
+        assertEquals(VoiceAction.NavigateWork, VoiceCommandRouter.parse("去公司"))
+        assertEquals(VoiceAction.NavigateWork, VoiceCommandRouter.parse("導航到公司"))
+        assertEquals(VoiceAction.NavigateWork, VoiceCommandRouter.parse("我要去公司"))
     }
 
     @Test
