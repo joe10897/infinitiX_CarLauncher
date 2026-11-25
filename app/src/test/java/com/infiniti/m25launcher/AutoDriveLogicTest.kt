@@ -248,4 +248,56 @@ class AutoDriveLogicTest {
         val accent = MediaSessionMonitor.extractAmbientAccentRgb(intArrayOf(deepIndigo, deepIndigo, 0xFF050505.toInt()))
         assertEquals(0x3A44B8, accent)
     }
+
+    @Test
+    fun remoteNavStore_generatesAndFormatsPairingCodesAndTopics() {
+        val code = RemoteNavStore.generatePairingCode(java.util.Random(42L))
+        assertTrue(code.matches(Regex("""Y51-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{4}-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{4}""")))
+        assertEquals("Y51-7K4M-9P2X", RemoteNavStore.formatPairingCode("y51-7k4m-9p2x"))
+        assertEquals("infinitiy51-nav-y517k4m9p2x", RemoteNavStore.topicForPairingCode("Y51-7K4M-9P2X"))
+        assertEquals(
+            "https://ntfy.sh/infinitiy51-nav-y517k4m9p2x/sse?since=2m",
+            RemoteNavStore.buildSseUrl("Y51-7K4M-9P2X")
+        )
+    }
+
+    @Test
+    fun remoteNavParser_parsesSseFramesAndExtractsPinpointDestinations() {
+        val keepalive = RemoteNavParser.parseSseEventLine("""data: {"id":"abc","time":1700000000,"event":"keepalive"}""")
+        assertNull(keepalive)
+
+        val sseLine = """data: {"id":"msg1","time":1700000100,"event":"message","message":"{\"v\":1,\"raw\":\"台北101 https://maps.app.goo.gl/xyz\"}"}"""
+        val parsedMsg = RemoteNavParser.parseSseEventLine(sseLine)
+        assertEquals("msg1", parsedMsg?.id)
+        assertEquals("台北101 https://maps.app.goo.gl/xyz", parsedMsg?.rawPayload)
+        assertTrue(RemoteNavParser.isFreshMessage(1700000100L, 1700000200L))
+        assertFalse(RemoteNavParser.isFreshMessage(1700000000L, 1700000500L))
+
+        assertTrue(RemoteNavParser.isShortMapUrl("https://maps.app.goo.gl/AbCd123"))
+        assertFalse(RemoteNavParser.isShortMapUrl("https://www.google.com/maps/place/Taipei+101"))
+
+        // Pinpoint !3d!4d takes precedence over camera center @lat,lng
+        val expanded = "https://www.google.com/maps/place/Taipei+101/@25.0300,121.5600,17z/data=!3m1!4b1!4m6!3m5!1s0x0!8m2!3d25.033964!4d121.564472"
+        val fromMaps = RemoteNavParser.extractNavigationTarget(
+            rawText = "台北101 https://maps.app.goo.gl/xyz",
+            resolvedUrl = expanded
+        )
+        assertEquals("25.033964,121.564472", fromMaps?.navigationQuery)
+        assertEquals("台北101", fromMaps?.displayLabel)
+
+        // Apple Maps link
+        val fromApple = RemoteNavParser.extractNavigationTarget("https://maps.apple.com/?ll=25.0478,121.5170&q=Taipei+Main+Station")
+        assertEquals("25.0478,121.5170", fromApple?.navigationQuery)
+        assertEquals("Taipei Main Station", fromApple?.displayLabel)
+
+        // Direct geo: URI
+        val fromGeo = RemoteNavParser.extractNavigationTarget("geo:25.0339,121.5644?q=Taipei+101")
+        assertEquals("25.0339,121.5644", fromGeo?.navigationQuery)
+        assertEquals("Taipei 101", fromGeo?.displayLabel)
+
+        // Plain LINE address text
+        val fromPlain = RemoteNavParser.extractNavigationTarget("台北市信義區市府路1號")
+        assertEquals("台北市信義區市府路1號", fromPlain?.navigationQuery)
+        assertEquals("台北市信義區市府路1號", fromPlain?.displayLabel)
+    }
 }

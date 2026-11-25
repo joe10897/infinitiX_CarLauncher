@@ -316,6 +316,7 @@
                 android:id="@+id/rowHealthBattery"
                 android:layout_width="match_parent"
                 android:layout_height="44dp"
+                android:layout_marginBottom="6dp"
                 android:background="@drawable/bg_button_instrument"
                 android:clickable="true"
                 android:focusable="true"
@@ -361,6 +362,61 @@
                     android:letterSpacing="0.08"
                     android:text="@string/health_badge_action"
                     android:textColor="@color/accent_amber_warn"
+                    android:textSize="10sp" />
+            </LinearLayout>
+
+            <!-- 6. Phone-to-Car Remote Navigation Pairing -->
+            <LinearLayout
+                android:id="@+id/rowHealthRemoteNav"
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:background="@drawable/bg_button_instrument"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp">
+
+                <View
+                    android:id="@+id/dotHealthRemoteNav"
+                    android:layout_width="8dp"
+                    android:layout_height="8dp"
+                    android:layout_marginEnd="10dp"
+                    android:background="@drawable/indicator_ready" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="@string/health_remote_nav_title"
+                        android:textColor="@color/text_primary"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/tvHealthRemoteNavSub"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:letterSpacing="0.08"
+                        android:textColor="@color/accent_fine_vision"
+                        android:textSize="9.5sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/badgeHealthRemoteNav"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.08"
+                    android:text="@string/remote_nav_badge_on"
+                    android:textColor="@color/accent_ready_green"
                     android:textSize="10sp" />
             </LinearLayout>
         </LinearLayout>

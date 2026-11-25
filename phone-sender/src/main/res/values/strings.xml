@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Y51 Send</string>
+    <string name="share_target_label">傳送到 Y51 車機</string>
+    <string name="brand_subtitle">INFINITI Y51 · 手機直傳車機導航</string>
+    <string name="zero_battery_badge">0% 背景耗電 · 無常駐服務 · 僅於分享時發送</string>
+
+    <string name="section_pairing_title">1. 車機配對碼（只需設定一次）</string>
+    <string name="pairing_code_hint">輸入車機顯示的 Y51-XXXX-YYYY</string>
+    <string name="btn_save_pairing">儲存配對碼</string>
+    <string name="pairing_saved_status">已配對：%1$s</string>
+    <string name="pairing_missing_status">尚未配對 — 請開啟車機「系統狀態體檢 → 手機傳送導航」查看配對碼</string>
+    <string name="msg_pairing_invalid">配對碼格式至少需 6 碼英數字（例：Y51-7K4M-9P2X）</string>
+    <string name="msg_pairing_saved">已儲存車機配對碼：%1$s</string>
+
+    <string name="section_send_title">2. 立即傳送目的地至車機</string>
+    <string name="destination_hint">貼上 Google 地圖連結、地址或地點名稱（例：台北101）</string>
+    <string name="btn_paste">貼上剪貼簿</string>
+    <string name="btn_send_now">傳送到車機並出發</string>
+    <string name="msg_need_pairing">請先輸入並儲存車機配對碼</string>
+    <string name="msg_need_destination">請先輸入或貼上目的地連結／地址</string>
+    <string name="msg_clipboard_empty">剪貼簿目前沒有文字</string>
+
+    <string name="status_sending">正在傳送到 Infiniti 車機…</string>
+    <string name="status_sent_ok">已傳送到車機，車機將自動開始分屏導航</string>
+    <string name="status_sent_fail">傳送失敗：%1$s（請檢查手機網路連線）</string>
+    <string name="last_sent_fmt">上次傳送：%1$s</string>
+
+    <string name="section_howto_title">日常極速用法（像 CarPlay 一樣）</string>
+    <string name="howto_body">在 Google 地圖找到地點（或在 LINE 收到地址）→ 點擊「分享」→ 選擇「傳送到 Y51 車機」。傳送完自動關閉，完全不留背景耗電。</string>
+</resources>

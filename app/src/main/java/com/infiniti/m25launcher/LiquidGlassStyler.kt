@@ -83,6 +83,22 @@ object LiquidGlassStyler {
         applyGlass(dialogRoot, R.id.rowHealthMediaSync, CORNER_SUB_DP, Variant.SUB_PANEL)
         applyGlass(dialogRoot, R.id.rowHealthPermissions, CORNER_SUB_DP, Variant.SUB_PANEL)
         applyGlass(dialogRoot, R.id.rowHealthBattery, CORNER_SUB_DP, Variant.SUB_PANEL)
+        applyGlass(dialogRoot, R.id.rowHealthRemoteNav, CORNER_SUB_DP, Variant.ACCENT)
+    }
+
+    fun applyToRemoteNavOverlay(rootView: View) {
+        applyGlass(rootView, R.id.panelRemoteNavOverlay, CORNER_PANEL_DP, Variant.MODAL)
+        applyGlass(rootView, R.id.btnRemoteNavCancel, CORNER_SUB_DP, Variant.SUB_PANEL)
+        applyGlass(rootView, R.id.btnRemoteNavGoNow, CORNER_SUB_DP, Variant.ACCENT)
+    }
+
+    fun applyToRemoteNavDialog(dialogRoot: View) {
+        applyGlass(dialogRoot, R.id.panelRemoteNavDialog, CORNER_PANEL_DP, Variant.MODAL)
+        applyGlass(dialogRoot, R.id.btnRemoteNavDialogClose, CORNER_SUB_DP, Variant.SUB_PANEL)
+        applyGlass(dialogRoot, R.id.panelRemoteNavCodeBox, CORNER_SUB_DP, Variant.SUB_PANEL)
+        applyGlass(dialogRoot, R.id.btnRemoteNavToggle, CORNER_SUB_DP, Variant.ACCENT)
+        applyGlass(dialogRoot, R.id.btnRemoteNavRegenerate, CORNER_SUB_DP, Variant.SUB_PANEL)
+        applyGlass(dialogRoot, R.id.btnRemoteNavTest, CORNER_SUB_DP, Variant.SUB_PANEL)
     }
 
     fun applyRoundedClip(view: View, cornerRadiusDp: Float) {

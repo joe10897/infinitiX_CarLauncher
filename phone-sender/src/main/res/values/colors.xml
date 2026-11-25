@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_obsidian">#07080B</color>
+    <color name="surface_card">#121520</color>
+    <color name="surface_input">#1A1E2E</color>
+    <color name="border_glass">#2CFFFFFF</color>
+    <color name="text_primary">#F5F6FA</color>
+    <color name="text_secondary">#8E96A8</color>
+    <color name="accent_fine_vision">#7D85E6</color>
+    <color name="accent_ready_green">#4ADE80</color>
+    <color name="accent_amber_warn">#F5A623</color>
+</resources>

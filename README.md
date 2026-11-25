@@ -153,6 +153,10 @@ infinitiX_CarLauncher/
 │       │   │   ├── MediaNotificationService.kt   # 系統通知監聽錨點服務（供 MediaSession 存取）
 │       │   │   ├── MediaSessionMonitor.kt        # Spotify 曲目、專輯封面、氛圍主色萃取與時間碼同步
 │       │   │   ├── SavedPlacesStore.kt           # 語音「回家 / 去公司」地址本地儲存
+│       │   │   ├── RemoteNavStore.kt             # 手機傳送導航配對碼、頻道與防重複歷史紀錄
+│       │   │   ├── RemoteNavParser.kt            # Google/Apple 地圖短網址展開與精準經緯度解析
+│       │   │   ├── RemoteNavClient.kt            # 車機背景 SSE 監聽（開屏連線、熄火斷線）
+│       │   │   ├── RemoteNavLaunchActivity.kt    # 3 秒液態玻璃倒數確認並自動分屏出發 HUD
 │       │   │   ├── SwcKeyStore.kt                # 方向盤自訂語音方控 KeyCode 本地儲存與系統鍵保護
 │       │   │   ├── VoiceTriggerActivity.kt       # 液態玻璃語音收音懸浮介面、方控綁定與彈窗備援
 │       │   │   ├── VoiceCommandRouter.kt         # 中英口語指令解析與分屏/導航/媒體路由
@@ -172,6 +176,15 @@ infinitiX_CarLauncher/
 │       └── test/java/com/infiniti/m25launcher/
 │           ├── AutoDriveLogicTest.kt             # 時速換算、冷卻時間、備援解析與玻璃狀態測試
 │           └── VoiceCommandRouterTest.kt         # 語音導航、Spotify 搜尋、媒體與音量解析測試
+├── phone-sender/                                 # 手機端「Y51 Send」零背景耗電傳送伴侶 App
+│   ├── build.gradle                              # applicationId com.infiniti.y51send
+│   └── src/main/
+│       ├── AndroidManifest.xml                   # 僅宣告 INTERNET 與 Share/geo Intent（無任何常駐服務）
+│       ├── java/com/infiniti/y51send/
+│       │   ├── MainActivity.kt                   # 配對碼設定與手動貼上地址傳送畫面
+│       │   ├── ShareTargetActivity.kt            # Google 地圖 / LINE 分享選單一鍵秒傳並自動關閉
+│       │   └── RemoteNavSender.kt                # 單次 HTTPS POST 傳送器與配對碼格式化
+│       └── res/                                  # Infiniti 日系黑白幾何傳送 Logo 與深曜石 UI
 ├── docs/
 │   ├── ui_preview_active.png                     # 行車啟動狀態渲染截圖
 │   └── ui_preview_inactive.png                   # 待機狀態渲染截圖
@@ -186,14 +199,15 @@ infinitiX_CarLauncher/
 
 ## 編譯與車機部署指南
 
-### 1. 本機編譯 Debug APK 與執行測試
+### 1. 本機編譯雙端 Debug APK 與執行測試
 
 ```powershell
-.\gradlew.bat assembleDebug testDebugUnitTest
+.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest :phone-sender:assembleDebug :phone-sender:testDebugUnitTest
 ```
 
-編譯完成後的 APK 位於：
-`app/build/outputs/apk/debug/app-debug.apk`
+編譯完成後的兩個 APK 分別位於：
+- **車機主程式 (`Y51 DriveOS v1.3`)**：`app/build/outputs/apk/debug/app-debug.apk`
+- **Android 手機伴侶 (`Y51 Send v1.3`)**：`phone-sender/build/outputs/apk/debug/phone-sender-debug.apk`
 
 ### 2. 透過 ADB 安裝至 FYT UIS7862 車機
 
@@ -201,12 +215,16 @@ infinitiX_CarLauncher/
 adb install -r app\build\outputs\apk\debug\app-debug.apk
 ```
 
-### 3. 車機端初次啟用設定（支援純 APK 安裝、免 ADB）
+### 3. 車機端與手機端初次啟用設定（支援純 APK 安裝、免 ADB）
 
-1. **安裝 APK（無需電腦 / ADB）**：將 `app-debug.apk` 透過隨身碟或 Google Drive 下載至車機直接安裝；可於抽屜或系統體檢面板右上角確認版本號（`v1.2 · 2026.11.26`）。
-2. **一鍵完成全部授權**：點擊頂部左上角 **Infiniti 狀態列** 開啟「**系統狀態體檢面板**」，依序點擊橘燈項目即可完成 5 項授權（預設桌面、無障礙管家、Spotify 封面同步、定位/麥克風、背景省電白名單），全部亮綠燈即完成。
-3. **設定方向盤方控語音鍵**：打開語音介面點擊 `綁定方控鍵` 後於 12 秒內按方向盤按鍵配對；若車機方控晶片未上報標準 Android `KeyEvent`，請改於方易通「方控學習」將該按鍵直接綁定啟動 **`Y51 Voice`**。
-4. **（選用／僅有 ADB 環境時）分屏狀態列自動隱藏**：若日後有連接電腦 ADB，可執行一次 `adb shell pm grant com.infiniti.m25launcher android.permission.WRITE_SECURE_SETTINGS`；無 ADB 時亦可於車機「工廠設定 → 顯示 / UI 設定」查看是否內建隱藏狀態列選項。
+1. **安裝車機 APK（無需電腦 / ADB）**：將 `app-debug.apk` 透過隨身碟或 Google Drive 下載至車機直接安裝；可於抽屜或系統體檢面板右上角確認版本號（`v1.3 · 2026.11.26`）。
+2. **一鍵完成車機權限授權**：點擊頂部左上角 **Infiniti 狀態列** 開啟「**系統狀態體檢面板**」，依序點擊橘燈項目即可完成 5 項授權（預設桌面、無障礙管家、Spotify 封面同步、定位/麥克風、背景省電白名單）。
+3. **手機直傳導航配對（像 CarPlay 一樣手機選點、車機自動出發）**：
+   - 在車機體檢面板點第 6 項 **「手機傳送導航（Y51 Send 配對）」** 記下專屬配對碼（例如 `Y51-XXXX-YYYY`）。
+   - 在你的 Android 手機安裝 **`phone-sender-debug.apk`（App 名稱：`Y51 Send`）**，輸入一次配對碼並儲存。
+   - 之後在手機 Google 地圖找好地點（或 LINE 收到地址），按 **「分享 → 傳送到 Y51 車機」**，手機傳送完立即關閉（0% 背景耗電），車機 1 秒內彈出 3 秒倒數並自動進入 **左 Maps 導航出發 + 右 Spotify 分屏**。
+4. **設定方向盤方控語音鍵**：打開語音介面點擊 `綁定方控鍵` 後於 12 秒內按方向盤按鍵配對；若車機方控晶片未上報標準 Android `KeyEvent`，請改於方易通「方控學習」將該按鍵直接綁定啟動 **`Y51 Voice`**。
+5. **（選用／僅有 ADB 環境時）分屏狀態列自動隱藏**：若日後有連接電腦 ADB，可執行一次 `adb shell pm grant com.infiniti.m25launcher android.permission.WRITE_SECURE_SETTINGS`；無 ADB 時亦可於車機「工廠設定 → 顯示 / UI 設定」查看是否內建隱藏狀態列選項。
 
 ---
 

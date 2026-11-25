@@ -514,8 +514,17 @@ class MainActivity : AppCompatActivity() {
         val rowMedia = dialog.findViewById<View>(R.id.rowHealthMediaSync)
         val rowPerms = dialog.findViewById<View>(R.id.rowHealthPermissions)
         val rowBattery = dialog.findViewById<View>(R.id.rowHealthBattery)
+        val rowRemoteNav = dialog.findViewById<View>(R.id.rowHealthRemoteNav)
 
-        TactileFeedbackHelper.attach(closeBtn, rowHome, rowAccess, rowMedia, rowPerms, rowBattery)
+        TactileFeedbackHelper.attach(
+            closeBtn,
+            rowHome,
+            rowAccess,
+            rowMedia,
+            rowPerms,
+            rowBattery,
+            rowRemoteNav
+        )
 
         closeBtn.setOnClickListener { dialog.dismiss() }
         rowHome.setOnClickListener { SystemHealthHelper.openDefaultHomeSettings(this) }
@@ -531,6 +540,10 @@ class MainActivity : AppCompatActivity() {
             }
         }
         rowBattery.setOnClickListener { SystemHealthHelper.requestIgnoreBatteryOptimizations(this) }
+        rowRemoteNav.setOnClickListener {
+            dialog.dismiss()
+            showRemoteNavPairingDialog()
+        }
 
         dialog.setOnDismissListener {
             if (activeHealthDialog === dialog) {
@@ -579,6 +592,85 @@ class MainActivity : AppCompatActivity() {
             R.id.badgeHealthBattery,
             snapshot.isBatteryUnrestricted
         )
+
+        val remoteEnabled = RemoteNavStore.isEnabled(this)
+        val pairingCode = RemoteNavStore.getOrCreatePairingCode(this)
+        val remoteActive = remoteEnabled && snapshot.isAutoDriveEnabled
+        dialog.findViewById<View>(R.id.dotHealthRemoteNav)?.setBackgroundResource(
+            if (remoteActive) R.drawable.indicator_ready else R.drawable.indicator_warn
+        )
+        dialog.findViewById<TextView>(R.id.tvHealthRemoteNavSub)?.text = pairingCode
+        dialog.findViewById<TextView>(R.id.badgeHealthRemoteNav)?.apply {
+            setText(if (remoteEnabled) R.string.remote_nav_badge_on else R.string.remote_nav_badge_off)
+            setTextColor(
+                ContextCompat.getColor(
+                    this@MainActivity,
+                    if (remoteActive) R.color.accent_ready_green else R.color.accent_amber_warn
+                )
+            )
+        }
+    }
+
+    private fun showRemoteNavPairingDialog() {
+        val dialog = createGlassDialog(R.layout.dialog_remote_nav, widthFraction = 0.58f)
+        dialog.findViewById<View>(R.id.panelRemoteNavDialog)?.let {
+            LiquidGlassStyler.applyToRemoteNavDialog(it)
+        }
+
+        val tvCode = dialog.findViewById<TextView>(R.id.tvRemoteNavPairingCode)
+        val tvState = dialog.findViewById<TextView>(R.id.tvRemoteNavStateHint)
+        val closeBtn = dialog.findViewById<View>(R.id.btnRemoteNavDialogClose)
+        val toggleBtn = dialog.findViewById<TextView>(R.id.btnRemoteNavToggle)
+        val regenBtn = dialog.findViewById<View>(R.id.btnRemoteNavRegenerate)
+        val testBtn = dialog.findViewById<View>(R.id.btnRemoteNavTest)
+
+        TactileFeedbackHelper.attach(closeBtn, toggleBtn, regenBtn, testBtn)
+
+        fun renderPairingState() {
+            val enabled = RemoteNavStore.isEnabled(this)
+            val serviceConnected = AutoDriveService.instance != null
+            tvCode.text = RemoteNavStore.getOrCreatePairingCode(this)
+            toggleBtn.setText(
+                if (enabled) R.string.remote_nav_toggle_disable else R.string.remote_nav_toggle_enable
+            )
+            val stateRes = when {
+                !enabled -> R.string.remote_nav_state_disabled
+                serviceConnected -> R.string.remote_nav_state_listening
+                else -> R.string.remote_nav_state_need_service
+            }
+            tvState.setText(stateRes)
+            tvState.setTextColor(
+                ContextCompat.getColor(
+                    this,
+                    if (enabled && serviceConnected) R.color.accent_ready_green else R.color.accent_amber_warn
+                )
+            )
+        }
+
+        closeBtn.setOnClickListener { dialog.dismiss() }
+        toggleBtn.setOnClickListener {
+            val next = !RemoteNavStore.isEnabled(this)
+            RemoteNavStore.setEnabled(this, next)
+            AutoDriveService.instance?.syncRemoteNavClient(forceRestart = true)
+            renderPairingState()
+        }
+        regenBtn.setOnClickListener {
+            RemoteNavStore.regeneratePairingCode(this)
+            AutoDriveService.instance?.syncRemoteNavClient(forceRestart = true)
+            renderPairingState()
+            Toast.makeText(this, R.string.remote_nav_msg_regenerated, Toast.LENGTH_SHORT).show()
+        }
+        testBtn.setOnClickListener {
+            dialog.dismiss()
+            RemoteNavLaunchActivity.launch(
+                context = this,
+                displayLabel = "台北101（本機模擬測試）",
+                navigationQuery = "25.033964,121.564472"
+            )
+        }
+
+        renderPairingState()
+        dialog.show()
     }
 
     private fun bindHealthRow(dialog: Dialog, dotId: Int, badgeId: Int, ready: Boolean) {

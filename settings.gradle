@@ -13,4 +13,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "infinitiX_CarLauncher"
-include ':app'
+include ':app', ':phone-sender'

@@ -62,6 +62,25 @@
     <string name="health_perms_sub">SPEEDOMETER &amp; VOICE ROUTER</string>
     <string name="health_battery_title">背景省電白名單</string>
     <string name="health_battery_sub">防止車機休眠關閉自動管家</string>
+    <string name="health_remote_nav_title">手機傳送導航（Y51 Send 配對）</string>
+
+    <string name="remote_nav_badge_on">配對設定</string>
+    <string name="remote_nav_badge_off">已停用</string>
+    <string name="remote_nav_dialog_title">手機傳送導航配對</string>
+    <string name="remote_nav_dialog_sub">於 Android 手機「Y51 Send」輸入以下配對碼即可一鍵發送出發</string>
+    <string name="remote_nav_code_label">車機專屬配對碼 · VEHICLE PAIRING CODE</string>
+    <string name="remote_nav_state_listening">待機監聽中（需啟用無障礙管家，熄火自動休眠）</string>
+    <string name="remote_nav_state_need_service">已開啟，請先啟用無障礙管家以背景接收</string>
+    <string name="remote_nav_state_disabled">已停用手機傳送接收</string>
+    <string name="remote_nav_toggle_enable">啟用接收</string>
+    <string name="remote_nav_toggle_disable">停用接收</string>
+    <string name="remote_nav_btn_regen">更換配對碼</string>
+    <string name="remote_nav_btn_test">測試出發</string>
+    <string name="remote_nav_hud_title">手機傳送導航 · REMOTE NAV</string>
+    <string name="remote_nav_countdown_fmt">%1$d 秒後自動出發</string>
+    <string name="remote_nav_btn_go_now">立即出發</string>
+    <string name="remote_nav_btn_cancel">取消</string>
+    <string name="remote_nav_msg_regenerated">已產生新配對碼，請同步更新手機 Y51 Send</string>
 
     <string name="places_dialog_title">語音快捷地址設定</string>
     <string name="places_home_label">住家地址 (語音說：回家 / 導航回家)</string>
