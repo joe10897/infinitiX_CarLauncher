@@ -10,11 +10,11 @@
     android:padding="10dp"
     tools:context=".MainActivity">
 
-    <!-- Top Instrument Status Bar -->
+    <!-- Top Infiniti Fine Vision Instrument Status Bar -->
     <LinearLayout
         android:id="@+id/panelTopStatus"
         android:layout_width="match_parent"
-        android:layout_height="34dp"
+        android:layout_height="36dp"
         android:layout_marginBottom="8dp"
         android:background="@drawable/bg_panel"
         android:gravity="center_vertical"
@@ -22,6 +22,7 @@
         android:paddingStart="10dp"
         android:paddingEnd="12dp">
 
+        <!-- Infiniti Geometric Emblem + Clickable System Health Badge -->
         <LinearLayout
             android:id="@+id/layoutAutoDriveStatus"
             android:layout_width="wrap_content"
@@ -32,24 +33,36 @@
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingStart="4dp"
-            android:paddingEnd="8dp">
+            android:paddingEnd="10dp">
+
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="15dp"
+                android:layout_marginEnd="8dp"
+                android:contentDescription="@string/brand_emblem_desc"
+                android:src="@drawable/ic_infiniti_emblem" />
+
+            <View
+                android:layout_width="1dp"
+                android:layout_height="13dp"
+                android:layout_marginEnd="8dp"
+                android:background="@color/glass_divider" />
 
             <View
                 android:id="@+id/viewStatusIndicator"
-                android:layout_width="6dp"
-                android:layout_height="6dp"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/indicator_inactive" />
+                android:layout_width="7dp"
+                android:layout_height="7dp"
+                android:layout_marginEnd="7dp"
+                android:background="@drawable/indicator_warn" />
 
             <TextView
                 android:id="@+id/tvAutoDriveStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:fontFamily="sans-serif-medium"
-                android:letterSpacing="0.12"
+                android:letterSpacing="0.10"
                 android:maxLines="1"
                 android:text="@string/status_inactive"
-                android:textAllCaps="true"
                 android:textColor="@color/text_secondary"
                 android:textSize="11sp" />
         </LinearLayout>
@@ -59,7 +72,8 @@
             android:layout_height="1dp"
             android:layout_weight="1" />
 
-        <TextView
+        <!-- Short-Tap All-Apps Drawer Trigger -->
+        <LinearLayout
             android:id="@+id/tvClusterDrawerTrigger"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
@@ -67,16 +81,29 @@
             android:background="@drawable/bg_status_badge"
             android:clickable="true"
             android:focusable="true"
-            android:fontFamily="sans-serif"
             android:gravity="center_vertical"
-            android:letterSpacing="0.16"
-            android:maxLines="1"
+            android:orientation="horizontal"
             android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:text="@string/header_cluster_tag"
-            android:textAllCaps="true"
-            android:textColor="@color/text_secondary"
-            android:textSize="10sp" />
+            android:paddingEnd="8dp">
+
+            <ImageView
+                android:layout_width="13dp"
+                android:layout_height="13dp"
+                android:layout_marginEnd="6dp"
+                android:contentDescription="@string/header_apps_btn"
+                android:src="@drawable/ic_apps_grid" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.12"
+                android:maxLines="1"
+                android:text="@string/header_apps_btn"
+                android:textAllCaps="true"
+                android:textColor="@color/text_primary"
+                android:textSize="10sp" />
+        </LinearLayout>
 
         <View
             android:layout_width="1dp"
@@ -84,6 +111,7 @@
             android:layout_marginEnd="6dp"
             android:background="@color/glass_divider" />
 
+        <!-- One-Tap System Settings -->
         <LinearLayout
             android:id="@+id/btnSettings"
             android:layout_width="wrap_content"
@@ -108,10 +136,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:fontFamily="sans-serif-medium"
-                android:letterSpacing="0.12"
+                android:letterSpacing="0.08"
                 android:maxLines="1"
                 android:text="@string/btn_settings"
-                android:textAllCaps="true"
                 android:textColor="@color/text_primary"
                 android:textSize="10sp" />
         </LinearLayout>
@@ -119,9 +146,25 @@
         <View
             android:layout_width="1dp"
             android:layout_height="14dp"
-            android:layout_marginEnd="12dp"
+            android:layout_marginEnd="10dp"
             android:background="@color/glass_divider" />
 
+        <!-- Date / Weekday Micro Label -->
+        <TextClock
+            android:id="@+id/clockDate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:fontFamily="sans-serif"
+            android:fontFeatureSettings="tnum"
+            android:format12Hour="MM.dd EEE"
+            android:format24Hour="MM.dd EEE"
+            android:letterSpacing="0.08"
+            android:textAllCaps="true"
+            android:textColor="@color/text_secondary"
+            android:textSize="10sp" />
+
+        <!-- 24h Digital Clock -->
         <TextClock
             android:id="@+id/clockTime"
             android:layout_width="wrap_content"
@@ -135,7 +178,7 @@
             android:textSize="13sp" />
     </LinearLayout>
 
-    <!-- Main 3-Column 1280x480 Landscape Dashboard -->
+    <!-- Main 3-Column 1280x480 Landscape Cockpit -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -143,7 +186,7 @@
         android:baselineAligned="false"
         android:orientation="horizontal">
 
-        <!-- Left Column (Weight 1.0): GPS Digital Speedometer + Manual Split Routine -->
+        <!-- Left Column (Weight 1.0): Fine Vision Twin-Ring Speedometer + Voice/Auto-Drive -->
         <LinearLayout
             android:id="@+id/panelSpeedometer"
             android:layout_width="0dp"
@@ -152,7 +195,7 @@
             android:layout_weight="1.0"
             android:background="@drawable/bg_panel"
             android:orientation="vertical"
-            android:padding="12dp">
+            android:padding="10dp">
 
             <LinearLayout
                 android:id="@+id/layoutGpsHeader"
@@ -164,8 +207,8 @@
                 android:orientation="horizontal">
 
                 <ImageView
-                    android:layout_width="14dp"
-                    android:layout_height="14dp"
+                    android:layout_width="13dp"
+                    android:layout_height="13dp"
                     android:layout_marginEnd="6dp"
                     android:contentDescription="@string/gps_header"
                     android:src="@drawable/ic_gps_signal" />
@@ -175,10 +218,9 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:fontFamily="sans-serif-medium"
-                    android:letterSpacing="0.16"
+                    android:letterSpacing="0.10"
                     android:maxLines="1"
                     android:text="@string/gps_header"
-                    android:textAllCaps="true"
                     android:textColor="@color/text_secondary"
                     android:textSize="10sp" />
 
@@ -187,7 +229,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-medium"
-                    android:letterSpacing="0.12"
+                    android:fontFeatureSettings="tnum"
+                    android:letterSpacing="0.10"
                     android:maxLines="1"
                     android:text="@string/gps_state_searching"
                     android:textAllCaps="true"
@@ -198,80 +241,80 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="6dp"
                 android:background="@color/glass_divider" />
 
-            <LinearLayout
+            <!-- Fine Vision 240-Degree Optical Arc Gauge + Centered Speed Readout -->
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_weight="1"
+                android:layout_weight="1">
+
+                <com.infiniti.m25launcher.FineVisionSpeedGaugeView
+                    android:id="@+id/speedGaugeView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:paddingStart="28dp"
+                    android:paddingTop="18dp"
+                    android:paddingEnd="28dp"
+                    android:paddingBottom="10dp">
+
+                    <androidx.appcompat.widget.AppCompatTextView
+                        android:id="@+id/tvSpeedValue"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:fontFamily="sans-serif-light"
+                        android:fontFeatureSettings="tnum"
+                        android:gravity="center"
+                        android:includeFontPadding="false"
+                        android:maxLines="1"
+                        android:text="0"
+                        android:textColor="@color/text_primary"
+                        app:autoSizeMaxTextSize="84sp"
+                        app:autoSizeMinTextSize="26sp"
+                        app:autoSizeStepGranularity="2sp"
+                        app:autoSizeTextType="uniform" />
+
+                    <TextView
+                        android:id="@+id/tvSpeedUnit"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.24"
+                        android:text="@string/gps_unit"
+                        android:textAllCaps="true"
+                        android:textColor="@color/accent_fine_vision"
+                        android:textSize="10sp" />
+                </LinearLayout>
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/tvTripTelemetry"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:fontFamily="sans-serif-medium"
+                android:fontFeatureSettings="tnum"
                 android:gravity="center"
-                android:orientation="vertical"
-                android:paddingTop="4dp"
-                android:paddingBottom="6dp">
+                android:letterSpacing="0.10"
+                android:maxLines="1"
+                android:text="@string/trip_telemetry_default"
+                android:textAllCaps="true"
+                android:textColor="@color/text_secondary"
+                android:textSize="9sp" />
 
-                <androidx.appcompat.widget.AppCompatTextView
-                    android:id="@+id/tvSpeedValue"
-                    android:layout_width="match_parent"
-                    android:layout_height="0dp"
-                    android:layout_weight="1"
-                    android:fontFamily="sans-serif-light"
-                    android:fontFeatureSettings="tnum"
-                    android:gravity="center"
-                    android:includeFontPadding="false"
-                    android:maxLines="1"
-                    android:text="0"
-                    android:textColor="@color/text_primary"
-                    app:autoSizeMaxTextSize="112sp"
-                    app:autoSizeMinTextSize="36sp"
-                    app:autoSizeStepGranularity="2sp"
-                    app:autoSizeTextType="uniform" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="sans-serif-medium"
-                    android:letterSpacing="0.24"
-                    android:text="@string/gps_unit"
-                    android:textAllCaps="true"
-                    android:textColor="@color/accent_fine_vision"
-                    android:textSize="11sp" />
-
-                <!-- Optical Roadster Speed Telemetry Bar -->
-                <FrameLayout
-                    android:id="@+id/speedBarContainer"
-                    android:layout_width="match_parent"
-                    android:layout_height="2dp"
-                    android:layout_marginTop="8dp"
-                    android:background="@color/glass_divider">
-
-                    <View
-                        android:id="@+id/viewSpeedBarFill"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:background="@color/accent_fine_vision" />
-                </FrameLayout>
-
-                <TextView
-                    android:id="@+id/tvTripTelemetry"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:fontFamily="sans-serif-medium"
-                    android:fontFeatureSettings="tnum"
-                    android:gravity="center"
-                    android:letterSpacing="0.10"
-                    android:maxLines="1"
-                    android:text="@string/trip_telemetry_default"
-                    android:textAllCaps="true"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="9sp" />
-            </LinearLayout>
-
+            <!-- Bottom Quick Actions -->
             <LinearLayout
                 android:id="@+id/btnVoiceCommand"
                 android:layout_width="match_parent"
-                android:layout_height="40dp"
+                android:layout_height="38dp"
                 android:layout_marginBottom="6dp"
                 android:background="@drawable/bg_button_instrument"
                 android:clickable="true"
@@ -282,8 +325,8 @@
                 android:paddingEnd="10dp">
 
                 <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
+                    android:layout_width="15dp"
+                    android:layout_height="15dp"
                     android:layout_marginEnd="8dp"
                     android:contentDescription="@string/btn_voice_command"
                     android:src="@drawable/ic_voice_mic" />
@@ -293,18 +336,17 @@
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
                     android:fontFamily="sans-serif-medium"
-                    android:letterSpacing="0.12"
+                    android:letterSpacing="0.10"
                     android:maxLines="1"
                     android:text="@string/btn_voice_command"
-                    android:textAllCaps="true"
                     android:textColor="@color/text_primary"
-                    android:textSize="11sp" />
+                    android:textSize="12sp" />
             </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/btnRunSplitRoutine"
                 android:layout_width="match_parent"
-                android:layout_height="40dp"
+                android:layout_height="38dp"
                 android:background="@drawable/bg_button_accent"
                 android:clickable="true"
                 android:focusable="true"
@@ -314,8 +356,8 @@
                 android:paddingEnd="10dp">
 
                 <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
+                    android:layout_width="15dp"
+                    android:layout_height="15dp"
                     android:layout_marginEnd="8dp"
                     android:contentDescription="@string/btn_run_split_routine"
                     android:src="@drawable/ic_routine_play" />
@@ -325,16 +367,15 @@
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
                     android:fontFamily="sans-serif-medium"
-                    android:letterSpacing="0.12"
+                    android:letterSpacing="0.10"
                     android:maxLines="1"
                     android:text="@string/btn_run_split_routine"
-                    android:textAllCaps="true"
                     android:textColor="@color/text_primary"
-                    android:textSize="11sp" />
+                    android:textSize="12sp" />
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Center Column (Weight 1.6): 1+2 Blind-Touch Instrument Grid -->
+        <!-- Center Column (Weight 1.6): 1+2 Tactile Craft Instrument Cards -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
@@ -342,72 +383,103 @@
             android:layout_weight="1.6"
             android:orientation="vertical">
 
-            <!-- 1. SPLIT NAVIGATION (Full-Width Primary Action) -->
-            <LinearLayout
+            <!-- 1. SPLIT NAVIGATION (Full-Width Hero Card) -->
+            <FrameLayout
                 android:id="@+id/btnSplitNav"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_marginBottom="8dp"
-                android:layout_weight="1.05"
+                android:layout_weight="1.08"
                 android:background="@drawable/bg_button_instrument"
                 android:clickable="true"
-                android:focusable="true"
-                android:orientation="vertical"
-                android:padding="14dp">
+                android:focusable="true">
+
+                <ImageView
+                    android:layout_width="86dp"
+                    android:layout_height="52dp"
+                    android:layout_gravity="top|end"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginEnd="14dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_craft_split_grid" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:padding="14dp">
 
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:contentDescription="@string/tile_split_nav"
-                        android:src="@drawable/ic_split_nav" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <FrameLayout
+                            android:layout_width="38dp"
+                            android:layout_height="38dp"
+                            android:background="@drawable/bg_icon_socket">
+
+                            <ImageView
+                                android:layout_width="22dp"
+                                android:layout_height="22dp"
+                                android:layout_gravity="center"
+                                android:contentDescription="@string/tile_split_nav"
+                                android:src="@drawable/ic_split_nav" />
+                        </FrameLayout>
+
+                        <View
+                            android:layout_width="0dp"
+                            android:layout_height="1dp"
+                            android:layout_weight="1" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="8dp"
+                            android:fontFamily="sans-serif-medium"
+                            android:letterSpacing="0.14"
+                            android:text="@string/tile_split_badge"
+                            android:textAllCaps="true"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="9sp" />
+
+                        <View
+                            android:layout_width="18dp"
+                            android:layout_height="2dp"
+                            android:background="@color/accent_fine_vision" />
+                    </LinearLayout>
 
                     <View
-                        android:layout_width="0dp"
-                        android:layout_height="1dp"
+                        android:layout_width="1dp"
+                        android:layout_height="0dp"
                         android:layout_weight="1" />
 
-                    <View
-                        android:layout_width="18dp"
-                        android:layout_height="2dp"
-                        android:background="@color/accent_fine_vision" />
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.06"
+                        android:maxLines="1"
+                        android:text="@string/tile_split_nav"
+                        android:textColor="@color/text_primary"
+                        android:textSize="17sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:ellipsize="end"
+                        android:fontFamily="sans-serif"
+                        android:letterSpacing="0.14"
+                        android:maxLines="1"
+                        android:text="@string/tile_split_nav_sub"
+                        android:textAllCaps="true"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="9.5sp" />
                 </LinearLayout>
-
-                <View
-                    android:layout_width="1dp"
-                    android:layout_height="0dp"
-                    android:layout_weight="1" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:fontFamily="sans-serif-medium"
-                    android:letterSpacing="0.06"
-                    android:maxLines="1"
-                    android:text="@string/tile_split_nav"
-                    android:textAllCaps="true"
-                    android:textColor="@color/text_primary"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:ellipsize="end"
-                    android:fontFamily="sans-serif"
-                    android:letterSpacing="0.14"
-                    android:maxLines="1"
-                    android:text="@string/tile_split_nav_sub"
-                    android:textAllCaps="true"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="10sp" />
-            </LinearLayout>
+            </FrameLayout>
 
             <!-- Bottom Row -->
             <LinearLayout
@@ -418,7 +490,7 @@
                 android:orientation="horizontal">
 
                 <!-- 2. SPEEDCAM HUD -->
-                <LinearLayout
+                <FrameLayout
                     android:id="@+id/btnSpeedcam"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
@@ -426,237 +498,283 @@
                     android:layout_weight="1"
                     android:background="@drawable/bg_button_instrument"
                     android:clickable="true"
-                    android:focusable="true"
-                    android:orientation="vertical"
-                    android:padding="12dp">
+                    android:focusable="true">
 
                     <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:contentDescription="@string/tile_speedcam"
-                        android:src="@drawable/ic_speedcam" />
+                        android:layout_width="54dp"
+                        android:layout_height="54dp"
+                        android:layout_gravity="top|end"
+                        android:layout_marginTop="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_craft_radar_ring" />
 
-                    <View
-                        android:layout_width="1dp"
-                        android:layout_height="0dp"
-                        android:layout_weight="1" />
-
-                    <TextView
+                    <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:ellipsize="end"
-                        android:fontFamily="sans-serif-medium"
-                        android:letterSpacing="0.06"
-                        android:maxLines="1"
-                        android:text="@string/tile_speedcam"
-                        android:textAllCaps="true"
-                        android:textColor="@color/text_primary"
-                        android:textSize="13sp" />
+                        android:layout_height="match_parent"
+                        android:orientation="vertical"
+                        android:padding="12dp">
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:ellipsize="end"
-                        android:fontFamily="sans-serif"
-                        android:letterSpacing="0.14"
-                        android:maxLines="1"
-                        android:text="@string/tile_speedcam_sub"
-                        android:textAllCaps="true"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="10sp" />
-                </LinearLayout>
+                        <FrameLayout
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/bg_icon_socket">
+
+                            <ImageView
+                                android:layout_width="21dp"
+                                android:layout_height="21dp"
+                                android:layout_gravity="center"
+                                android:contentDescription="@string/tile_speedcam"
+                                android:src="@drawable/ic_speedcam" />
+                        </FrameLayout>
+
+                        <View
+                            android:layout_width="1dp"
+                            android:layout_height="0dp"
+                            android:layout_weight="1" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:fontFamily="sans-serif-medium"
+                            android:letterSpacing="0.06"
+                            android:maxLines="1"
+                            android:text="@string/tile_speedcam"
+                            android:textColor="@color/text_primary"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:ellipsize="end"
+                            android:fontFamily="sans-serif"
+                            android:letterSpacing="0.14"
+                            android:maxLines="1"
+                            android:text="@string/tile_speedcam_sub"
+                            android:textAllCaps="true"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="9sp" />
+                    </LinearLayout>
+                </FrameLayout>
 
                 <!-- 3. VEHICLE INFO -->
-                <LinearLayout
+                <FrameLayout
                     android:id="@+id/btnVehicleInfo"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_weight="1"
                     android:background="@drawable/bg_button_instrument"
                     android:clickable="true"
-                    android:focusable="true"
-                    android:orientation="vertical"
-                    android:padding="12dp">
+                    android:focusable="true">
 
                     <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:contentDescription="@string/tile_vehicle_info"
-                        android:src="@drawable/ic_vehicle_info" />
+                        android:layout_width="54dp"
+                        android:layout_height="54dp"
+                        android:layout_gravity="top|end"
+                        android:layout_marginTop="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_craft_chassis_grid" />
 
-                    <View
-                        android:layout_width="1dp"
-                        android:layout_height="0dp"
-                        android:layout_weight="1" />
-
-                    <TextView
+                    <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:ellipsize="end"
-                        android:fontFamily="sans-serif-medium"
-                        android:letterSpacing="0.06"
-                        android:maxLines="1"
-                        android:text="@string/tile_vehicle_info"
-                        android:textAllCaps="true"
-                        android:textColor="@color/text_primary"
-                        android:textSize="13sp" />
+                        android:layout_height="match_parent"
+                        android:orientation="vertical"
+                        android:padding="12dp">
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:ellipsize="end"
-                        android:fontFamily="sans-serif"
-                        android:letterSpacing="0.14"
-                        android:maxLines="1"
-                        android:text="@string/tile_vehicle_info_sub"
-                        android:textAllCaps="true"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="10sp" />
-                </LinearLayout>
+                        <FrameLayout
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/bg_icon_socket">
+
+                            <ImageView
+                                android:layout_width="21dp"
+                                android:layout_height="21dp"
+                                android:layout_gravity="center"
+                                android:contentDescription="@string/tile_vehicle_info"
+                                android:src="@drawable/ic_vehicle_info" />
+                        </FrameLayout>
+
+                        <View
+                            android:layout_width="1dp"
+                            android:layout_height="0dp"
+                            android:layout_weight="1" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:fontFamily="sans-serif-medium"
+                            android:letterSpacing="0.06"
+                            android:maxLines="1"
+                            android:text="@string/tile_vehicle_info"
+                            android:textColor="@color/text_primary"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:ellipsize="end"
+                            android:fontFamily="sans-serif"
+                            android:letterSpacing="0.14"
+                            android:maxLines="1"
+                            android:text="@string/tile_vehicle_info_sub"
+                            android:textAllCaps="true"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="9sp" />
+                    </LinearLayout>
+                </FrameLayout>
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Right Column (Weight 1.1): Media Control Card -->
-        <LinearLayout
+        <!-- Right Column (Weight 1.1): Ambient Album-Art Media Control Card -->
+        <FrameLayout
             android:id="@+id/panelMediaControl"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1.1"
-            android:background="@drawable/bg_panel"
-            android:orientation="vertical"
-            android:padding="12dp">
+            android:background="@drawable/bg_panel">
 
-            <!-- Clickable Spotify Header -->
-            <LinearLayout
-                android:id="@+id/btnSpotifyHeader"
+            <!-- Ambient Album Art Backdrop Layer (clipped to glass card radius) -->
+            <ImageView
+                android:id="@+id/ivMediaBackdropArt"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_status_badge"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingStart="4dp"
-                android:paddingTop="4dp"
-                android:paddingEnd="4dp"
-                android:paddingBottom="4dp">
+                android:layout_height="match_parent"
+                android:alpha="0.34"
+                android:contentDescription="@null"
+                android:scaleType="centerCrop"
+                android:visibility="gone" />
 
-                <View
-                    android:layout_width="2dp"
-                    android:layout_height="22dp"
-                    android:layout_marginEnd="10dp"
-                    android:background="@color/accent_fine_vision" />
+            <View
+                android:id="@+id/viewMediaArtScrim"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_media_art_scrim"
+                android:visibility="gone" />
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <!-- Clickable Spotify Header with Live Album Thumbnail -->
                 <LinearLayout
-                    android:layout_width="0dp"
+                    android:id="@+id/btnSpotifyHeader"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:background="@drawable/bg_status_badge"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="4dp">
 
-                    <TextView
-                        android:id="@+id/tvMediaTitle"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:ellipsize="end"
-                        android:fontFamily="sans-serif-medium"
-                        android:letterSpacing="0.08"
-                        android:maxLines="1"
-                        android:text="@string/media_title"
-                        android:textAllCaps="true"
-                        android:textColor="@color/text_primary"
-                        android:textSize="12sp" />
+                    <FrameLayout
+                        android:layout_width="38dp"
+                        android:layout_height="38dp"
+                        android:layout_marginEnd="10dp"
+                        android:background="@drawable/bg_icon_socket">
 
-                    <TextView
-                        android:id="@+id/tvMediaSubtitle"
-                        android:layout_width="match_parent"
+                        <ImageView
+                            android:id="@+id/ivMediaAlbumFallback"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:layout_gravity="center"
+                            android:contentDescription="@string/media_title"
+                            android:src="@drawable/ic_spotify_launch" />
+
+                        <ImageView
+                            android:id="@+id/ivMediaAlbumThumb"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:contentDescription="@string/media_title"
+                            android:scaleType="centerCrop"
+                            android:visibility="gone" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:ellipsize="end"
-                        android:fontFamily="sans-serif"
-                        android:letterSpacing="0.12"
-                        android:maxLines="1"
-                        android:text="@string/media_subtitle_sync_hint"
-                        android:textAllCaps="true"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="9sp" />
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tvMediaTitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:fontFamily="sans-serif-medium"
+                            android:letterSpacing="0.04"
+                            android:maxLines="1"
+                            android:text="@string/media_title"
+                            android:textColor="@color/text_primary"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:id="@+id/tvMediaSubtitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:ellipsize="end"
+                            android:fontFamily="sans-serif"
+                            android:letterSpacing="0.06"
+                            android:maxLines="1"
+                            android:text="@string/media_subtitle_sync_hint"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="9.5sp" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:layout_marginStart="6dp"
+                        android:alpha="0.82"
+                        android:contentDescription="@string/media_title"
+                        android:src="@drawable/ic_spotify_launch" />
                 </LinearLayout>
 
-                <ImageView
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
-                    android:layout_marginStart="8dp"
-                    android:contentDescription="@string/media_title"
-                    android:src="@drawable/ic_spotify_launch" />
-            </LinearLayout>
+                <!-- Optical Playback Progress Bar + Monospace Timecode -->
+                <FrameLayout
+                    android:id="@+id/mediaProgressContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="3dp"
+                    android:layout_marginTop="8dp"
+                    android:background="@color/glass_divider">
 
-            <!-- Optical Media Playback Progress Bar -->
-            <FrameLayout
-                android:id="@+id/mediaProgressContainer"
-                android:layout_width="match_parent"
-                android:layout_height="2dp"
-                android:layout_marginTop="8dp"
-                android:layout_marginBottom="8dp"
-                android:background="@color/glass_divider">
-
-                <View
-                    android:id="@+id/viewMediaProgressFill"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:background="@color/accent_fine_vision" />
-            </FrameLayout>
-
-            <!-- Primary Blind-Touch PLAY / PAUSE -->
-            <LinearLayout
-                android:id="@+id/btnMediaPlayPause"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_marginBottom="8dp"
-                android:layout_weight="1.15"
-                android:background="@drawable/bg_button_accent"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:orientation="vertical"
-                android:padding="8dp">
-
-                <ImageView
-                    android:id="@+id/ivMediaPlayPause"
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
-                    android:layout_marginBottom="6dp"
-                    android:contentDescription="@string/media_play_pause"
-                    android:src="@drawable/ic_media_play_pause" />
+                    <View
+                        android:id="@+id/viewMediaProgressFill"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:background="@color/accent_fine_vision" />
+                </FrameLayout>
 
                 <TextView
-                    android:id="@+id/tvMediaPlayPause"
-                    android:layout_width="wrap_content"
+                    android:id="@+id/tvMediaTimecode"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginBottom="8dp"
                     android:fontFamily="sans-serif-medium"
-                    android:letterSpacing="0.14"
+                    android:fontFeatureSettings="tnum"
+                    android:gravity="end"
+                    android:letterSpacing="0.10"
                     android:maxLines="1"
-                    android:text="@string/media_play_pause"
-                    android:textAllCaps="true"
-                    android:textColor="@color/text_primary"
-                    android:textSize="11sp" />
-            </LinearLayout>
+                    android:text="@string/media_timecode_idle"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="9sp" />
 
-            <!-- Secondary PREV / NEXT Transport Controls -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:baselineAligned="false"
-                android:orientation="horizontal">
-
+                <!-- Primary Blind-Touch PLAY / PAUSE -->
                 <LinearLayout
-                    android:id="@+id/btnMediaPrev"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_marginEnd="8dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/bg_button_instrument"
+                    android:id="@+id/btnMediaPlayPause"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_marginBottom="8dp"
+                    android:layout_weight="1.1"
+                    android:background="@drawable/bg_button_accent"
                     android:clickable="true"
                     android:focusable="true"
                     android:gravity="center"
@@ -664,56 +782,99 @@
                     android:padding="8dp">
 
                     <ImageView
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:layout_marginBottom="4dp"
-                        android:contentDescription="@string/media_prev"
-                        android:src="@drawable/ic_media_prev" />
+                        android:id="@+id/ivMediaPlayPause"
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:layout_marginBottom="6dp"
+                        android:contentDescription="@string/media_play_pause"
+                        android:src="@drawable/ic_media_play_pause" />
 
                     <TextView
+                        android:id="@+id/tvMediaPlayPause"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="sans-serif-medium"
                         android:letterSpacing="0.14"
                         android:maxLines="1"
-                        android:text="@string/media_prev"
+                        android:text="@string/media_play_pause"
                         android:textAllCaps="true"
                         android:textColor="@color/text_primary"
-                        android:textSize="10sp" />
+                        android:textSize="11sp" />
                 </LinearLayout>
 
+                <!-- Secondary PREV / NEXT Transport Controls -->
                 <LinearLayout
-                    android:id="@+id/btnMediaNext"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_button_instrument"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center"
-                    android:orientation="vertical"
-                    android:padding="8dp">
+                    android:baselineAligned="false"
+                    android:orientation="horizontal">
 
-                    <ImageView
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:layout_marginBottom="4dp"
-                        android:contentDescription="@string/media_next"
-                        android:src="@drawable/ic_media_next" />
+                    <LinearLayout
+                        android:id="@+id/btnMediaPrev"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_button_instrument"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:padding="8dp">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="sans-serif-medium"
-                        android:letterSpacing="0.14"
-                        android:maxLines="1"
-                        android:text="@string/media_next"
-                        android:textAllCaps="true"
-                        android:textColor="@color/text_primary"
-                        android:textSize="10sp" />
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_marginBottom="4dp"
+                            android:contentDescription="@string/media_prev"
+                            android:src="@drawable/ic_media_prev" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:letterSpacing="0.14"
+                            android:maxLines="1"
+                            android:text="@string/media_prev"
+                            android:textAllCaps="true"
+                            android:textColor="@color/text_primary"
+                            android:textSize="10sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/btnMediaNext"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_button_instrument"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:padding="8dp">
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_marginBottom="4dp"
+                            android:contentDescription="@string/media_next"
+                            android:src="@drawable/ic_media_next" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:letterSpacing="0.14"
+                            android:maxLines="1"
+                            android:text="@string/media_next"
+                            android:textAllCaps="true"
+                            android:textColor="@color/text_primary"
+                            android:textSize="10sp" />
+                    </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
-        </LinearLayout>
+        </FrameLayout>
     </LinearLayout>
 
 </LinearLayout>

@@ -11,11 +11,13 @@ import android.media.ToneGenerator
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.view.View
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -36,6 +38,9 @@ class VoiceTriggerActivity : AppCompatActivity() {
     private var audioFocusRequest: AudioFocusRequest? = null
     private var toneGenerator: ToneGenerator? = null
     private var isListening = false
+    private var isSwcLearning = false
+    private var accessibilityPromptShown = false
+    private var fallbackAttemptedForSession = false
 
     private val recordAudioPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -47,10 +52,27 @@ class VoiceTriggerActivity : AppCompatActivity() {
         }
     }
 
+    private val speechActivityFallbackLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val candidates = result.data
+                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                .orEmpty()
+            if (candidates.isNotEmpty()) {
+                handleRecognitionResults(candidates)
+            } else {
+                showErrorState(getString(R.string.voice_err_no_match))
+            }
+        } else if (!isSwcLearning) {
+            updateStatus(R.string.voice_status_standby, isAccent = false)
+        }
+    }
+
     private val recognitionListener = object : RecognitionListener {
         override fun onReadyForSpeech(params: Bundle?) {
             isListening = true
-            playConfirmationTone(ToneGenerator.TONE_PROP_BEEP, 55)
+            // Skip confirmation beep here: ToneGenerator can contend with the FYT mic HAL.
             updateStatus(R.string.voice_status_listening, isAccent = true)
             tvVoiceTranscript.setText(R.string.voice_prompt_ready)
         }
@@ -71,16 +93,21 @@ class VoiceTriggerActivity : AppCompatActivity() {
         override fun onError(error: Int) {
             isListening = false
             abandonVoiceAudioFocus()
-            val message = when (error) {
+            when (error) {
                 SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS ->
-                    getString(R.string.voice_err_permission)
+                    showErrorState(getString(R.string.voice_err_permission))
                 SpeechRecognizer.ERROR_NO_MATCH,
                 SpeechRecognizer.ERROR_SPEECH_TIMEOUT ->
-                    getString(R.string.voice_err_no_match)
-                else ->
-                    getString(R.string.voice_err_no_match)
+                    showErrorState(getString(R.string.voice_err_no_match))
+                else -> {
+                    val errorMsg = getString(R.string.voice_err_code, formatSpeechErrorLabel(error))
+                    if (shouldTryActivityFallback(error) && launchSpeechActivityFallback()) {
+                        tvVoiceTranscript.text = errorMsg
+                    } else {
+                        showErrorState(errorMsg)
+                    }
+                }
             }
-            showErrorState(message)
         }
 
         override fun onPartialResults(partialResults: Bundle?) {
@@ -127,6 +154,7 @@ class VoiceTriggerActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        cancelSwcLearning()
         mainHandler.removeCallbacksAndMessages(null)
         abandonVoiceAudioFocus()
         destroyRecognizer()
@@ -141,13 +169,24 @@ class VoiceTriggerActivity : AppCompatActivity() {
         findViewById<View>(R.id.panelVoiceRouter).setOnClickListener {
             // Absorb taps on the glass panel itself so backdrop tap-to-close does not trigger.
         }
-        findViewById<View>(R.id.btnVoiceClose).setOnClickListener {
+        val closeBtn = findViewById<View>(R.id.btnVoiceClose)
+        val retryBtn = findViewById<View>(R.id.btnVoiceRetry)
+        val bindSwcBtn = findViewById<View>(R.id.btnVoiceBindSwc)
+        val assistantBtn = findViewById<View>(R.id.btnVoiceAssistant)
+
+        TactileFeedbackHelper.attach(closeBtn, retryBtn, bindSwcBtn, assistantBtn)
+
+        closeBtn.setOnClickListener {
             finish()
         }
-        findViewById<View>(R.id.btnVoiceRetry).setOnClickListener {
+        retryBtn.setOnClickListener {
             ensureAudioPermissionAndListen()
         }
-        findViewById<View>(R.id.btnVoiceAssistant).setOnClickListener {
+        bindSwcBtn.setOnClickListener {
+            toggleSwcLearnMode()
+        }
+        assistantBtn.setOnClickListener {
+            cancelSwcLearning()
             abandonVoiceAudioFocus()
             destroyRecognizer()
             if (!VoiceCommandRouter.launchSystemAssistant(this)) {
@@ -156,9 +195,16 @@ class VoiceTriggerActivity : AppCompatActivity() {
                 finish()
             }
         }
+        assistantBtn.setOnLongClickListener {
+            openSettingsScreen(Settings.ACTION_VOICE_INPUT_SETTINGS)
+            true
+        }
     }
 
     private fun ensureAudioPermissionAndListen() {
+        cancelSwcLearning()
+        accessibilityPromptShown = false
+        fallbackAttemptedForSession = false
         mainHandler.removeCallbacksAndMessages(null)
         val granted = ContextCompat.checkSelfPermission(
             this,
@@ -176,7 +222,9 @@ class VoiceTriggerActivity : AppCompatActivity() {
 
     private fun beginVoiceSession() {
         if (!SpeechRecognizer.isRecognitionAvailable(this)) {
-            showErrorState(getString(R.string.voice_err_no_recognizer))
+            if (!launchSpeechActivityFallback()) {
+                showErrorState(getString(R.string.voice_err_no_recognizer))
+            }
             return
         }
 
@@ -187,22 +235,16 @@ class VoiceTriggerActivity : AppCompatActivity() {
             SpeechRecognizer.createSpeechRecognizer(this)
         } catch (_: Exception) {
             abandonVoiceAudioFocus()
-            showErrorState(getString(R.string.voice_err_no_recognizer))
+            if (!launchSpeechActivityFallback()) {
+                showErrorState(getString(R.string.voice_err_no_recognizer))
+            }
             return
         }
 
         recognizer.setRecognitionListener(recognitionListener)
         speechRecognizer = recognizer
 
-        val recognizerIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "zh-TW")
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "zh-TW")
-            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1400L)
-            putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, packageName)
-        }
+        val recognizerIntent = buildSpeechRecognizerIntent(includePartial = true)
 
         updateStatus(R.string.voice_status_listening, isAccent = true)
         tvVoiceTranscript.setText(R.string.voice_prompt_ready)
@@ -210,7 +252,107 @@ class VoiceTriggerActivity : AppCompatActivity() {
             recognizer.startListening(recognizerIntent)
         } catch (_: Exception) {
             abandonVoiceAudioFocus()
-            showErrorState(getString(R.string.voice_err_no_recognizer))
+            if (!launchSpeechActivityFallback()) {
+                showErrorState(getString(R.string.voice_err_no_recognizer))
+            }
+        }
+    }
+
+    private fun buildSpeechRecognizerIntent(includePartial: Boolean): Intent =
+        Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "zh-TW")
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "zh-TW")
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+            putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, packageName)
+            if (includePartial) {
+                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1400L)
+            }
+        }
+
+    private fun launchSpeechActivityFallback(): Boolean {
+        if (fallbackAttemptedForSession) return false
+        fallbackAttemptedForSession = true
+        destroyRecognizer()
+        abandonVoiceAudioFocus()
+
+        val intent = buildSpeechRecognizerIntent(includePartial = false)
+        if (intent.resolveActivity(packageManager) == null) {
+            return false
+        }
+        return try {
+            updateStatus(R.string.voice_status_listening, isAccent = true)
+            speechActivityFallbackLauncher.launch(intent)
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun toggleSwcLearnMode() {
+        if (isSwcLearning) {
+            cancelSwcLearning()
+            updateStatus(R.string.voice_status_standby, isAccent = false)
+            tvVoiceTranscript.setText(R.string.voice_prompt_ready)
+            return
+        }
+
+        mainHandler.removeCallbacksAndMessages(null)
+        destroyRecognizer()
+        abandonVoiceAudioFocus()
+
+        val service = AutoDriveService.instance
+        if (service == null) {
+            if (!accessibilityPromptShown) {
+                accessibilityPromptShown = true
+                showErrorState(getString(R.string.voice_swc_need_accessibility))
+            } else {
+                openSettingsScreen(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            }
+            return
+        }
+
+        accessibilityPromptShown = false
+        isSwcLearning = true
+        updateStatus(R.string.voice_status_standby, isAccent = true)
+        tvVoiceTranscript.setText(R.string.voice_swc_waiting)
+
+        service.startSwcLearnMode(
+            timeoutMs = AutoDriveService.SWC_LEARN_TIMEOUT_MS,
+            onCaptured = { keyCode ->
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    isSwcLearning = false
+                    playConfirmationTone(ToneGenerator.TONE_PROP_ACK, 85)
+                    updateStatus(R.string.voice_status_executed, isAccent = true)
+                    tvVoiceTranscript.text = getString(
+                        R.string.voice_swc_bound,
+                        SwcKeyStore.formatKeyName(keyCode),
+                        keyCode
+                    )
+                }
+            },
+            onTimeout = {
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    isSwcLearning = false
+                    showErrorState(getString(R.string.voice_swc_timeout))
+                }
+            }
+        )
+    }
+
+    private fun cancelSwcLearning() {
+        isSwcLearning = false
+        AutoDriveService.instance?.cancelSwcLearnMode()
+    }
+
+    private fun openSettingsScreen(action: String) {
+        try {
+            startActivity(Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (_: Exception) {
+            Toast.makeText(this, R.string.voice_err_no_recognizer, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -305,6 +447,22 @@ class VoiceTriggerActivity : AppCompatActivity() {
 
     companion object {
         private const val AUTO_CLOSE_DELAY_MS = 750L
+
+        fun shouldTryActivityFallback(errorCode: Int): Boolean =
+            errorCode == SpeechRecognizer.ERROR_CLIENT ||
+                errorCode == SpeechRecognizer.ERROR_AUDIO ||
+                errorCode == SpeechRecognizer.ERROR_SERVER
+
+        fun formatSpeechErrorLabel(errorCode: Int): String = when (errorCode) {
+            SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "NET_TIMEOUT #$errorCode"
+            SpeechRecognizer.ERROR_NETWORK -> "NET #$errorCode"
+            SpeechRecognizer.ERROR_AUDIO -> "AUDIO #$errorCode"
+            SpeechRecognizer.ERROR_SERVER -> "SERVER #$errorCode"
+            SpeechRecognizer.ERROR_CLIENT -> "CLIENT #$errorCode"
+            SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "BUSY #$errorCode"
+            SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "PERM #$errorCode"
+            else -> "CODE #$errorCode"
+        }
 
         fun launch(context: Context) {
             val intent = Intent(context, VoiceTriggerActivity::class.java).apply {

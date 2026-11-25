@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="72dp"
+    android:height="44dp"
+    android:viewportWidth="72"
+    android:viewportHeight="44">
+    <!-- Subtle machined 50:50 split blueprint watermark -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M3,4 L69,4 L69,40 L3,40 Z M36,4 L36,40"
+        android:strokeWidth="1.0"
+        android:strokeColor="#24FFFFFF" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M11,30 L19.5,12 L28,30 L19.5,25.5 Z"
+        android:strokeWidth="1.1"
+        android:strokeColor="#309EA6FF"
+        android:strokeLineJoin="round" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M44,15 L61,15 M44,21 L57,21 M44,27 L53,27"
+        android:strokeWidth="1.1"
+        android:strokeColor="#24FFFFFF"
+        android:strokeLineCap="round" />
+</vector>

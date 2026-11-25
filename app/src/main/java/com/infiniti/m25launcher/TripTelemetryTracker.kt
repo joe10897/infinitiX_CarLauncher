@@ -61,6 +61,10 @@ class TripTelemetryTracker {
         /** Speeds below ~2.0 km/h (0.55 m/s) are clamped to 0 to eliminate stationary GPS drift. */
         const val DEADBAND_MPS = 0.55f
         const val SPEED_BAR_MAX_KMH = 140
+        const val OVERSPEED_WARN_KMH = 115
+        const val COMPASS_MIN_SPEED_KMH = 4
+
+        private val COMPASS_SECTORS = arrayOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")
 
         fun filterSpeedKmh(speedMps: Float, hasSpeed: Boolean): Int {
             if (!hasSpeed || speedMps.isNaN() || speedMps < DEADBAND_MPS) return 0
@@ -70,6 +74,20 @@ class TripTelemetryTracker {
         fun speedBarRatio(speedKmh: Int, maxScaleKmh: Int = SPEED_BAR_MAX_KMH): Float {
             if (speedKmh <= 0 || maxScaleKmh <= 0) return 0f
             return (speedKmh.toFloat() / maxScaleKmh.toFloat()).coerceIn(0f, 1f)
+        }
+
+        fun isOverspeed(speedKmh: Int, thresholdKmh: Int = OVERSPEED_WARN_KMH): Boolean =
+            speedKmh >= thresholdKmh
+
+        /**
+         * Formats GPS bearing degrees into a compact 8-point cardinal readout (e.g. `NE 042°`).
+         */
+        fun formatCompassHeading(bearingDeg: Float): String {
+            if (bearingDeg.isNaN() || bearingDeg.isInfinite()) return "N 000°"
+            val normalized = ((bearingDeg % 360f) + 360f) % 360f
+            val roundedDeg = Math.round(normalized) % 360
+            val sectorIndex = (((normalized + 22.5f) / 45f).toInt()) % COMPASS_SECTORS.size
+            return String.format("%s %03d°", COMPASS_SECTORS[sectorIndex], roundedDeg)
         }
 
         fun formatDuration(elapsedMs: Long): String {

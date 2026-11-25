@@ -4,7 +4,7 @@ import android.Manifest
 import android.app.Dialog
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.location.Location
@@ -40,23 +40,34 @@ class MainActivity : AppCompatActivity() {
     private lateinit var viewStatusIndicator: View
     private lateinit var tvAutoDriveStatus: TextView
     private lateinit var tvClusterDrawerTrigger: View
+    private lateinit var btnSettings: View
 
     private lateinit var layoutGpsHeader: View
     private lateinit var tvGpsStatus: TextView
+    private lateinit var speedGaugeView: FineVisionSpeedGaugeView
     private lateinit var tvSpeedValue: AppCompatTextView
-    private lateinit var speedBarContainer: View
-    private lateinit var viewSpeedBarFill: View
+    private lateinit var tvSpeedUnit: TextView
     private lateinit var tvTripTelemetry: TextView
 
+    private lateinit var ivMediaBackdropArt: ImageView
+    private lateinit var viewMediaArtScrim: View
+    private lateinit var ivMediaAlbumThumb: ImageView
+    private lateinit var ivMediaAlbumFallback: ImageView
     private lateinit var tvMediaTitle: TextView
     private lateinit var tvMediaSubtitle: TextView
     private lateinit var mediaProgressContainer: View
     private lateinit var viewMediaProgressFill: View
+    private lateinit var tvMediaTimecode: TextView
     private lateinit var ivMediaPlayPause: ImageView
     private lateinit var tvMediaPlayPause: TextView
 
     private val tripTracker = TripTelemetryTracker()
     private var mediaMonitor: MediaSessionMonitor? = null
+    private var mediaPanelGlass: LiquidGlassDrawable? = null
+    private var appliedDaytimeTheme: Boolean? = null
+    private var lastDisplayedAlbumArt: Bitmap? = null
+    private var lastAmbientAccentColor: Int? = null
+    private var activeHealthDialog: Dialog? = null
 
     private var locationManager: LocationManager? = null
     private var accessibilityManager: AccessibilityManager? = null
@@ -72,11 +83,14 @@ class MainActivity : AppCompatActivity() {
         } else {
             updateGpsStatus(R.string.gps_state_no_perm, isLocked = false)
         }
+        refreshAutoDriveStatus()
+        refreshOpenHealthDialogIfNeeded()
     }
 
     private val accessibilityStateListener =
         AccessibilityManager.AccessibilityStateChangeListener {
             refreshAutoDriveStatus()
+            refreshOpenHealthDialogIfNeeded()
         }
 
     private val gpsListener = object : LocationListener {
@@ -86,10 +100,14 @@ class MainActivity : AppCompatActivity() {
                 hasSpeed = location.hasSpeed()
             )
             val snapshot = tripTracker.recordSample(filteredKmh, SystemClock.elapsedRealtime())
-            renderSpeedTelemetry(snapshot)
+            renderSpeedTelemetry(snapshot, animate = true)
 
             val strongFix = !location.hasAccuracy() || location.accuracy <= GPS_LOCK_ACCURACY_M
-            if (strongFix) {
+            if (filteredKmh >= TripTelemetryTracker.COMPASS_MIN_SPEED_KMH && location.hasBearing()) {
+                val compass = TripTelemetryTracker.formatCompassHeading(location.bearing)
+                val fixTag = if (strongFix) "LOCK" else "WEAK"
+                updateGpsStatusText("$compass · $fixTag", isLocked = strongFix)
+            } else if (strongFix) {
                 updateGpsStatus(R.string.gps_state_lock, isLocked = true)
             } else {
                 updateGpsStatus(R.string.gps_state_weak, isLocked = false)
@@ -104,7 +122,10 @@ class MainActivity : AppCompatActivity() {
 
         override fun onProviderDisabled(provider: String) {
             if (provider == LocationManager.GPS_PROVIDER) {
-                renderSpeedTelemetry(tripTracker.currentSnapshot(0, SystemClock.elapsedRealtime()))
+                renderSpeedTelemetry(
+                    tripTracker.currentSnapshot(0, SystemClock.elapsedRealtime()),
+                    animate = false
+                )
                 updateGpsStatus(R.string.gps_state_disabled, isLocked = false)
             }
         }
@@ -120,7 +141,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         bindViews()
-        LiquidGlassStyler.applyToDashboard(findViewById(R.id.rootDashboard))
+        refreshCockpitThemeIfNeeded()
         setupBackNavigationBlock()
         setupListeners()
         applyImmersiveFullscreen()
@@ -156,8 +177,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        AppLauncher.setSplitImmersiveMode(this, false)
+        refreshCockpitThemeIfNeeded()
         applyImmersiveFullscreen()
         refreshAutoDriveStatus()
+        refreshOpenHealthDialogIfNeeded()
         startGpsUpdates()
         mediaMonitor?.start()
     }
@@ -173,6 +197,12 @@ class MainActivity : AppCompatActivity() {
         super.onStop()
     }
 
+    override fun onDestroy() {
+        activeHealthDialog?.dismiss()
+        activeHealthDialog = null
+        super.onDestroy()
+    }
+
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
@@ -185,20 +215,38 @@ class MainActivity : AppCompatActivity() {
         viewStatusIndicator = findViewById(R.id.viewStatusIndicator)
         tvAutoDriveStatus = findViewById(R.id.tvAutoDriveStatus)
         tvClusterDrawerTrigger = findViewById(R.id.tvClusterDrawerTrigger)
+        btnSettings = findViewById(R.id.btnSettings)
 
         layoutGpsHeader = findViewById(R.id.layoutGpsHeader)
         tvGpsStatus = findViewById(R.id.tvGpsStatus)
+        speedGaugeView = findViewById(R.id.speedGaugeView)
         tvSpeedValue = findViewById(R.id.tvSpeedValue)
-        speedBarContainer = findViewById(R.id.speedBarContainer)
-        viewSpeedBarFill = findViewById(R.id.viewSpeedBarFill)
+        tvSpeedUnit = findViewById(R.id.tvSpeedUnit)
         tvTripTelemetry = findViewById(R.id.tvTripTelemetry)
 
+        ivMediaBackdropArt = findViewById(R.id.ivMediaBackdropArt)
+        viewMediaArtScrim = findViewById(R.id.viewMediaArtScrim)
+        ivMediaAlbumThumb = findViewById(R.id.ivMediaAlbumThumb)
+        ivMediaAlbumFallback = findViewById(R.id.ivMediaAlbumFallback)
         tvMediaTitle = findViewById(R.id.tvMediaTitle)
         tvMediaSubtitle = findViewById(R.id.tvMediaSubtitle)
         mediaProgressContainer = findViewById(R.id.mediaProgressContainer)
         viewMediaProgressFill = findViewById(R.id.viewMediaProgressFill)
+        tvMediaTimecode = findViewById(R.id.tvMediaTimecode)
         ivMediaPlayPause = findViewById(R.id.ivMediaPlayPause)
         tvMediaPlayPause = findViewById(R.id.tvMediaPlayPause)
+    }
+
+    private fun refreshCockpitThemeIfNeeded() {
+        val daytime = CockpitThemeMode.isDaytimeNow()
+        if (appliedDaytimeTheme == daytime) return
+        appliedDaytimeTheme = daytime
+        mediaPanelGlass = LiquidGlassStyler.applyToDashboard(
+            findViewById(R.id.rootDashboard),
+            isDaytime = daytime
+        )
+        mediaPanelGlass?.setAmbientTintColor(lastAmbientAccentColor)
+        speedGaugeView.setDaytimeMode(daytime)
     }
 
     private fun setupBackNavigationBlock() {
@@ -213,34 +261,64 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
+        val voiceButton = findViewById<View>(R.id.btnVoiceCommand)
+        val routineButton = findViewById<View>(R.id.btnRunSplitRoutine)
+        val splitNavButton = findViewById<View>(R.id.btnSplitNav)
+        val speedcamButton = findViewById<View>(R.id.btnSpeedcam)
+        val vehicleInfoButton = findViewById<View>(R.id.btnVehicleInfo)
+        val spotifyHeader = findViewById<View>(R.id.btnSpotifyHeader)
+        val prevButton = findViewById<View>(R.id.btnMediaPrev)
+        val playPauseButton = findViewById<View>(R.id.btnMediaPlayPause)
+        val nextButton = findViewById<View>(R.id.btnMediaNext)
+
+        TactileFeedbackHelper.attach(
+            layoutAutoDriveStatus,
+            tvClusterDrawerTrigger,
+            btnSettings,
+            voiceButton,
+            routineButton,
+            splitNavButton,
+            speedcamButton,
+            vehicleInfoButton,
+            spotifyHeader,
+            playPauseButton,
+            prevButton,
+            nextButton
+        )
+
         layoutAutoDriveStatus.setOnClickListener {
-            openAccessibilitySettings()
+            showSystemHealthDialog()
         }
 
-        // Hidden gesture: long-press Y51 // FINE VISION tag to open All-Apps Drawer
+        // Direct short-tap (and legacy long-press) opens All-Apps Drawer with pinned favorites.
+        tvClusterDrawerTrigger.setOnClickListener {
+            showAllAppsDrawerDialog()
+        }
         tvClusterDrawerTrigger.setOnLongClickListener {
             showAllAppsDrawerDialog()
             true
         }
 
-        findViewById<View>(R.id.btnSettings).setOnClickListener {
+        btnSettings.setOnClickListener {
             openSystemSettings()
         }
 
         layoutGpsHeader.setOnClickListener {
-            if (!hasLocationPermission()) {
+            if (!SystemHealthHelper.hasLocationPermission(this)) {
                 requestStartupPermissions()
             }
         }
 
         layoutGpsHeader.setOnLongClickListener {
             tripTracker.reset()
-            renderSpeedTelemetry(tripTracker.currentSnapshot(0, SystemClock.elapsedRealtime()))
+            renderSpeedTelemetry(
+                tripTracker.currentSnapshot(0, SystemClock.elapsedRealtime()),
+                animate = false
+            )
             Toast.makeText(this, R.string.msg_trip_reset, Toast.LENGTH_SHORT).show()
             true
         }
 
-        val voiceButton = findViewById<View>(R.id.btnVoiceCommand)
         voiceButton.setOnClickListener {
             VoiceTriggerActivity.launch(this)
         }
@@ -249,7 +327,7 @@ class MainActivity : AppCompatActivity() {
             true
         }
 
-        findViewById<View>(R.id.btnRunSplitRoutine).setOnClickListener {
+        routineButton.setOnClickListener {
             val service = AutoDriveService.instance
             if (service != null) {
                 service.triggerFullRoutineNow()
@@ -259,7 +337,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        findViewById<View>(R.id.btnSplitNav).setOnClickListener {
+        splitNavButton.setOnClickListener {
             val service = AutoDriveService.instance
             if (service != null) {
                 service.triggerSplitNavigationNow()
@@ -269,11 +347,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        findViewById<View>(R.id.btnSpeedcam).setOnClickListener {
+        speedcamButton.setOnClickListener {
             AppLauncher.launchSpeedcam(this)
         }
 
-        findViewById<View>(R.id.btnVehicleInfo).setOnClickListener {
+        vehicleInfoButton.setOnClickListener {
             AppLauncher.launchPackage(
                 this,
                 primaryPackage = AppLauncher.PKG_CAR_INFO,
@@ -281,7 +359,6 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
-        val spotifyHeader = findViewById<View>(R.id.btnSpotifyHeader)
         spotifyHeader.setOnClickListener {
             AppLauncher.launchPackage(this, AppLauncher.PKG_SPOTIFY)
         }
@@ -290,21 +367,40 @@ class MainActivity : AppCompatActivity() {
             true
         }
 
-        findViewById<View>(R.id.btnMediaPrev).setOnClickListener {
+        prevButton.setOnClickListener {
             AppLauncher.dispatchMediaKey(this, KeyEvent.KEYCODE_MEDIA_PREVIOUS)
         }
 
-        findViewById<View>(R.id.btnMediaPlayPause).setOnClickListener {
+        playPauseButton.setOnClickListener {
             AppLauncher.dispatchMediaKey(this, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
         }
 
-        findViewById<View>(R.id.btnMediaNext).setOnClickListener {
+        nextButton.setOnClickListener {
             AppLauncher.dispatchMediaKey(this, KeyEvent.KEYCODE_MEDIA_NEXT)
         }
     }
 
-    private fun renderSpeedTelemetry(snapshot: TripTelemetryTracker.Snapshot) {
-        tvSpeedValue.text = snapshot.currentSpeedKmh.toString()
+    private fun renderSpeedTelemetry(
+        snapshot: TripTelemetryTracker.Snapshot,
+        animate: Boolean = true
+    ) {
+        val overspeed = TripTelemetryTracker.isOverspeed(snapshot.currentSpeedKmh)
+        val speedTextColor = if (overspeed) {
+            Color.parseColor("#FFD999")
+        } else {
+            ContextCompat.getColor(this, R.color.text_primary)
+        }
+        val unitColor = ContextCompat.getColor(
+            this,
+            if (overspeed) R.color.accent_amber_warn else R.color.accent_fine_vision
+        )
+        tvSpeedValue.setTextColor(speedTextColor)
+        tvSpeedUnit.setTextColor(unitColor)
+
+        speedGaugeView.setSpeedKmh(snapshot.currentSpeedKmh, animate = animate) { displayed ->
+            tvSpeedValue.text = displayed.toString()
+        }
+
         val duration = TripTelemetryTracker.formatDuration(snapshot.elapsedMs)
         tvTripTelemetry.text = getString(
             R.string.trip_telemetry_format,
@@ -312,16 +408,16 @@ class MainActivity : AppCompatActivity() {
             snapshot.avgSpeedKmh,
             duration
         )
-        val ratio = TripTelemetryTracker.speedBarRatio(snapshot.currentSpeedKmh)
-        updateOpticalBar(speedBarContainer, viewSpeedBarFill, ratio)
     }
 
     private fun renderMediaState(state: MediaSessionMonitor.NowPlayingState) {
         if (!state.hasNotificationAccess) {
             tvMediaTitle.setText(R.string.media_title)
             tvMediaSubtitle.setText(R.string.media_subtitle_sync_hint)
+            tvMediaTimecode.setText(R.string.media_timecode_idle)
             ivMediaPlayPause.setImageResource(R.drawable.ic_media_play_pause)
             tvMediaPlayPause.setText(R.string.media_play_pause)
+            applyMediaArtwork(albumArt = null, accentRgb = null)
             updateOpticalBar(mediaProgressContainer, viewMediaProgressFill, 0f)
             return
         }
@@ -329,14 +425,20 @@ class MainActivity : AppCompatActivity() {
         if (!state.hasActiveSession || state.title.isNullOrEmpty()) {
             tvMediaTitle.setText(R.string.media_title)
             tvMediaSubtitle.setText(R.string.media_subtitle_idle)
+            tvMediaTimecode.setText(R.string.media_timecode_idle)
             ivMediaPlayPause.setImageResource(R.drawable.ic_media_play_pause)
             tvMediaPlayPause.setText(R.string.media_play_pause)
+            applyMediaArtwork(albumArt = null, accentRgb = null)
             updateOpticalBar(mediaProgressContainer, viewMediaProgressFill, 0f)
             return
         }
 
         tvMediaTitle.text = state.title
         tvMediaSubtitle.text = state.artist ?: getString(R.string.media_title)
+        tvMediaTimecode.text = MediaSessionMonitor.formatTrackTimecode(
+            state.positionMs,
+            state.durationMs
+        )
         if (state.isPlaying) {
             ivMediaPlayPause.setImageResource(R.drawable.ic_media_pause)
             tvMediaPlayPause.setText(R.string.media_pause)
@@ -344,7 +446,40 @@ class MainActivity : AppCompatActivity() {
             ivMediaPlayPause.setImageResource(R.drawable.ic_media_play)
             tvMediaPlayPause.setText(R.string.media_play)
         }
+        applyMediaArtwork(state.albumArt, state.albumAccentColor)
         updateOpticalBar(mediaProgressContainer, viewMediaProgressFill, state.progressRatio)
+    }
+
+    private fun applyMediaArtwork(albumArt: Bitmap?, accentRgb: Int?) {
+        if (lastAmbientAccentColor != accentRgb) {
+            lastAmbientAccentColor = accentRgb
+            mediaPanelGlass?.setAmbientTintColor(accentRgb)
+            val barColor = if (accentRgb != null) {
+                (0xFF shl 24) or accentRgb
+            } else {
+                ContextCompat.getColor(this, R.color.accent_fine_vision)
+            }
+            viewMediaProgressFill.setBackgroundColor(barColor)
+        }
+
+        if (albumArt === lastDisplayedAlbumArt) return
+        lastDisplayedAlbumArt = albumArt
+
+        if (albumArt != null && !albumArt.isRecycled) {
+            ivMediaBackdropArt.setImageBitmap(albumArt)
+            ivMediaBackdropArt.visibility = View.VISIBLE
+            viewMediaArtScrim.visibility = View.VISIBLE
+            ivMediaAlbumThumb.setImageBitmap(albumArt)
+            ivMediaAlbumThumb.visibility = View.VISIBLE
+            ivMediaAlbumFallback.visibility = View.GONE
+        } else {
+            ivMediaBackdropArt.setImageDrawable(null)
+            ivMediaBackdropArt.visibility = View.GONE
+            viewMediaArtScrim.visibility = View.GONE
+            ivMediaAlbumThumb.setImageDrawable(null)
+            ivMediaAlbumThumb.visibility = View.GONE
+            ivMediaAlbumFallback.visibility = View.VISIBLE
+        }
     }
 
     private fun updateOpticalBar(container: View, fillView: View, ratio: Float) {
@@ -364,24 +499,150 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun showSystemHealthDialog() {
+        activeHealthDialog?.dismiss()
+        val dialog = createGlassDialog(R.layout.dialog_system_health, widthFraction = 0.62f)
+        dialog.findViewById<View>(R.id.panelSystemHealth)?.let {
+            LiquidGlassStyler.applyToSystemHealthDialog(it)
+        }
+        dialog.findViewById<TextView>(R.id.tvHealthVersion)?.text =
+            SystemHealthHelper.formatVersionLabel()
+
+        val closeBtn = dialog.findViewById<View>(R.id.btnHealthClose)
+        val rowHome = dialog.findViewById<View>(R.id.rowHealthHome)
+        val rowAccess = dialog.findViewById<View>(R.id.rowHealthAccessibility)
+        val rowMedia = dialog.findViewById<View>(R.id.rowHealthMediaSync)
+        val rowPerms = dialog.findViewById<View>(R.id.rowHealthPermissions)
+        val rowBattery = dialog.findViewById<View>(R.id.rowHealthBattery)
+
+        TactileFeedbackHelper.attach(closeBtn, rowHome, rowAccess, rowMedia, rowPerms, rowBattery)
+
+        closeBtn.setOnClickListener { dialog.dismiss() }
+        rowHome.setOnClickListener { SystemHealthHelper.openDefaultHomeSettings(this) }
+        rowAccess.setOnClickListener { openAccessibilitySettings() }
+        rowMedia.setOnClickListener { openNotificationListenerSettings() }
+        rowPerms.setOnClickListener {
+            if (!SystemHealthHelper.hasLocationPermission(this) ||
+                !SystemHealthHelper.hasRecordAudioPermission(this)
+            ) {
+                requestStartupPermissions()
+            } else {
+                SystemHealthHelper.openAppDetailsSettings(this)
+            }
+        }
+        rowBattery.setOnClickListener { SystemHealthHelper.requestIgnoreBatteryOptimizations(this) }
+
+        dialog.setOnDismissListener {
+            if (activeHealthDialog === dialog) {
+                activeHealthDialog = null
+            }
+            applyImmersiveFullscreen()
+        }
+
+        activeHealthDialog = dialog
+        bindSystemHealthSnapshot(dialog, SystemHealthHelper.collect(this))
+        dialog.show()
+    }
+
+    private fun refreshOpenHealthDialogIfNeeded() {
+        val dialog = activeHealthDialog ?: return
+        if (!dialog.isShowing) return
+        bindSystemHealthSnapshot(dialog, SystemHealthHelper.collect(this))
+    }
+
+    private fun bindSystemHealthSnapshot(
+        dialog: Dialog,
+        snapshot: SystemHealthHelper.HealthSnapshot
+    ) {
+        bindHealthRow(dialog, R.id.dotHealthHome, R.id.badgeHealthHome, snapshot.isDefaultHome)
+        bindHealthRow(
+            dialog,
+            R.id.dotHealthAccessibility,
+            R.id.badgeHealthAccessibility,
+            snapshot.isAutoDriveEnabled
+        )
+        bindHealthRow(
+            dialog,
+            R.id.dotHealthMediaSync,
+            R.id.badgeHealthMediaSync,
+            snapshot.isMediaSyncEnabled
+        )
+        bindHealthRow(
+            dialog,
+            R.id.dotHealthPermissions,
+            R.id.badgeHealthPermissions,
+            snapshot.hasLocationAndMic
+        )
+        bindHealthRow(
+            dialog,
+            R.id.dotHealthBattery,
+            R.id.badgeHealthBattery,
+            snapshot.isBatteryUnrestricted
+        )
+    }
+
+    private fun bindHealthRow(dialog: Dialog, dotId: Int, badgeId: Int, ready: Boolean) {
+        dialog.findViewById<View>(dotId)?.setBackgroundResource(
+            if (ready) R.drawable.indicator_ready else R.drawable.indicator_warn
+        )
+        dialog.findViewById<TextView>(badgeId)?.apply {
+            setText(if (ready) R.string.health_badge_ready else R.string.health_badge_action)
+            setTextColor(
+                ContextCompat.getColor(
+                    this@MainActivity,
+                    if (ready) R.color.accent_ready_green else R.color.accent_amber_warn
+                )
+            )
+        }
+    }
+
     private fun showAllAppsDrawerDialog() {
-        val apps = AppLauncher.queryDrawerApps(this)
-        val dialog = createGlassDialog(R.layout.dialog_app_drawer, widthFraction = 0.72f)
+        val rawApps = AppLauncher.queryDrawerApps(this)
+        val dialog = createGlassDialog(R.layout.dialog_app_drawer, widthFraction = 0.74f)
         dialog.findViewById<View>(R.id.panelAppDrawer)?.let {
             LiquidGlassStyler.applyToAppDrawer(it)
         }
-        dialog.findViewById<View>(R.id.btnDrawerClose)?.setOnClickListener {
+        dialog.findViewById<TextView>(R.id.tvDrawerVersion)?.text =
+            SystemHealthHelper.formatVersionLabel()
+
+        val closeBtn = dialog.findViewById<View>(R.id.btnDrawerClose)
+        TactileFeedbackHelper.attach(closeBtn)
+        closeBtn.setOnClickListener {
             dialog.dismiss()
         }
 
         val grid = dialog.findViewById<GridView>(R.id.gridAppDrawer)
-        grid.adapter = AppDrawerAdapter(this, apps)
+        val adapter = AppDrawerAdapter(
+            context = this,
+            initialItems = sortDrawerApps(rawApps),
+            initialPinned = PinnedAppsStore.getPinnedPackages(this).toSet()
+        )
+        grid.adapter = adapter
         grid.setOnItemClickListener { _, _, position, _ ->
-            val selected = apps[position]
+            val selected = adapter.getItem(position)
             dialog.dismiss()
             AppLauncher.launchPackage(this, selected.packageName)
         }
+        grid.setOnItemLongClickListener { _, _, position, _ ->
+            val selected = adapter.getItem(position)
+            val nowPinned = PinnedAppsStore.togglePin(this, selected.packageName)
+            val updatedPinned = PinnedAppsStore.getPinnedPackages(this)
+            adapter.updateData(
+                newItems = PinnedAppsStore.sortWithPinnedFirst(rawApps, updatedPinned) {
+                    it.packageName
+                },
+                newPinned = updatedPinned.toSet()
+            )
+            val toastRes = if (nowPinned) R.string.msg_app_pinned else R.string.msg_app_unpinned
+            Toast.makeText(this, getString(toastRes, selected.label), Toast.LENGTH_SHORT).show()
+            true
+        }
         dialog.show()
+    }
+
+    private fun sortDrawerApps(apps: List<AppLauncher.DrawerAppItem>): List<AppLauncher.DrawerAppItem> {
+        val pinned = PinnedAppsStore.getPinnedPackages(this)
+        return PinnedAppsStore.sortWithPinnedFirst(apps, pinned) { it.packageName }
     }
 
     private fun showSavedPlacesDialog() {
@@ -395,10 +656,14 @@ class MainActivity : AppCompatActivity() {
         etHome.setText(SavedPlacesStore.getHomeAddress(this).orEmpty())
         etWork.setText(SavedPlacesStore.getWorkAddress(this).orEmpty())
 
-        dialog.findViewById<View>(R.id.btnPlacesCancel)?.setOnClickListener {
+        val cancelBtn = dialog.findViewById<View>(R.id.btnPlacesCancel)
+        val saveBtn = dialog.findViewById<View>(R.id.btnPlacesSave)
+        TactileFeedbackHelper.attach(cancelBtn, saveBtn)
+
+        cancelBtn.setOnClickListener {
             dialog.dismiss()
         }
-        dialog.findViewById<View>(R.id.btnPlacesSave)?.setOnClickListener {
+        saveBtn.setOnClickListener {
             SavedPlacesStore.savePlaces(this, etHome.text?.toString(), etWork.text?.toString())
             Toast.makeText(this, R.string.msg_places_saved, Toast.LENGTH_SHORT).show()
             dialog.dismiss()
@@ -422,16 +687,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshAutoDriveStatus() {
-        val active = AppLauncher.isAccessibilityServiceEnabled(this, AutoDriveService::class.java)
-        if (active) {
-            viewStatusIndicator.setBackgroundResource(R.drawable.indicator_active)
-            tvAutoDriveStatus.setText(R.string.status_active)
+        val snapshot = SystemHealthHelper.collect(this)
+        val indicatorRes = when {
+            snapshot.isAllReady -> R.drawable.indicator_ready
+            snapshot.isAutoDriveEnabled -> R.drawable.indicator_active
+            else -> R.drawable.indicator_warn
+        }
+        viewStatusIndicator.setBackgroundResource(indicatorRes)
+
+        if (snapshot.isAutoDriveEnabled) {
+            tvAutoDriveStatus.text = getString(
+                R.string.status_active,
+                snapshot.readyCount,
+                snapshot.totalChecks
+            )
             tvAutoDriveStatus.setTextColor(ContextCompat.getColor(this, R.color.text_primary))
         } else {
-            viewStatusIndicator.setBackgroundResource(R.drawable.indicator_inactive)
-            tvAutoDriveStatus.setText(R.string.status_inactive)
+            tvAutoDriveStatus.text = getString(
+                R.string.status_inactive,
+                snapshot.readyCount,
+                snapshot.totalChecks
+            )
             tvAutoDriveStatus.setTextColor(
-                ContextCompat.getColor(this, R.color.accent_fine_vision)
+                ContextCompat.getColor(this, R.color.accent_amber_warn)
             )
         }
     }
@@ -474,32 +752,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun hasLocationPermission(): Boolean {
-        val fine = ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-        val coarse = ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-        return fine || coarse
-    }
-
-    private fun hasRecordAudioPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.RECORD_AUDIO
-        ) == PackageManager.PERMISSION_GRANTED
-    }
-
     private fun requestStartupPermissions() {
         val missing = ArrayList<String>(3)
-        if (!hasLocationPermission()) {
+        if (!SystemHealthHelper.hasLocationPermission(this)) {
             missing.add(Manifest.permission.ACCESS_FINE_LOCATION)
             missing.add(Manifest.permission.ACCESS_COARSE_LOCATION)
         }
-        if (!hasRecordAudioPermission()) {
+        if (!SystemHealthHelper.hasRecordAudioPermission(this)) {
             missing.add(Manifest.permission.RECORD_AUDIO)
         }
         if (missing.isNotEmpty()) {
@@ -508,9 +767,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun ensureLocationPermissionAndStart() {
-        if (hasLocationPermission()) {
+        if (SystemHealthHelper.hasLocationPermission(this)) {
             startGpsUpdates()
-            if (!hasRecordAudioPermission()) {
+            if (!SystemHealthHelper.hasRecordAudioPermission(this)) {
                 requestStartupPermissions()
             }
         } else {
@@ -520,7 +779,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startGpsUpdates() {
-        if (!hasLocationPermission()) {
+        if (!SystemHealthHelper.hasLocationPermission(this)) {
             updateGpsStatus(R.string.gps_state_no_perm, isLocked = false)
             return
         }
@@ -542,7 +801,10 @@ class MainActivity : AppCompatActivity() {
             false
         }
         if (!gpsEnabled) {
-            renderSpeedTelemetry(tripTracker.currentSnapshot(0, SystemClock.elapsedRealtime()))
+            renderSpeedTelemetry(
+                tripTracker.currentSnapshot(0, SystemClock.elapsedRealtime()),
+                animate = false
+            )
             updateGpsStatus(R.string.gps_state_disabled, isLocked = false)
             return
         }
@@ -557,7 +819,10 @@ class MainActivity : AppCompatActivity() {
                     speedMps = lastKnown.speed,
                     hasSpeed = lastKnown.hasSpeed()
                 )
-                renderSpeedTelemetry(tripTracker.currentSnapshot(filtered, SystemClock.elapsedRealtime()))
+                renderSpeedTelemetry(
+                    tripTracker.currentSnapshot(filtered, SystemClock.elapsedRealtime()),
+                    animate = false
+                )
             }
             @Suppress("MissingPermission")
             lm.requestLocationUpdates(
@@ -587,7 +852,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateGpsStatus(statusResId: Int, isLocked: Boolean) {
-        tvGpsStatus.setText(statusResId)
+        updateGpsStatusText(getString(statusResId), isLocked)
+    }
+
+    private fun updateGpsStatusText(statusText: String, isLocked: Boolean) {
+        tvGpsStatus.text = statusText
         val colorRes = if (isLocked) R.color.accent_fine_vision else R.color.text_secondary
         tvGpsStatus.setTextColor(ContextCompat.getColor(this, colorRes))
     }
@@ -598,10 +867,22 @@ class MainActivity : AppCompatActivity() {
 
     private class AppDrawerAdapter(
         context: Context,
-        private val items: List<AppLauncher.DrawerAppItem>
+        initialItems: List<AppLauncher.DrawerAppItem>,
+        initialPinned: Set<String>
     ) : BaseAdapter() {
 
         private val inflater = LayoutInflater.from(context)
+        private var items: List<AppLauncher.DrawerAppItem> = initialItems
+        private var pinnedPackages: Set<String> = initialPinned
+
+        fun updateData(
+            newItems: List<AppLauncher.DrawerAppItem>,
+            newPinned: Set<String>
+        ) {
+            items = newItems
+            pinnedPackages = newPinned
+            notifyDataSetChanged()
+        }
 
         override fun getCount(): Int = items.size
 
@@ -610,10 +891,16 @@ class MainActivity : AppCompatActivity() {
         override fun getItemId(position: Int): Long = position.toLong()
 
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-            val view = convertView ?: inflater.inflate(R.layout.item_app_drawer, parent, false).also {
-                LiquidGlassStyler.applyToDrawerTile(it)
-            }
+            val view = convertView ?: inflater.inflate(R.layout.item_app_drawer, parent, false)
             val item = items[position]
+            val isPinned = item.packageName in pinnedPackages
+            val previousPinTag = view.getTag(R.id.tileDrawerApp) as? Boolean
+            if (previousPinTag != isPinned) {
+                LiquidGlassStyler.applyToDrawerTile(view, isPinned = isPinned)
+                view.setTag(R.id.tileDrawerApp, isPinned)
+            }
+            view.findViewById<View>(R.id.viewDrawerPinBadge).visibility =
+                if (isPinned) View.VISIBLE else View.GONE
             view.findViewById<ImageView>(R.id.ivDrawerAppIcon).setImageDrawable(item.icon)
             view.findViewById<TextView>(R.id.tvDrawerAppLabel).text = item.label
             return view

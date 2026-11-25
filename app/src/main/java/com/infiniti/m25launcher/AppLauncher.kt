@@ -1,10 +1,13 @@
 package com.infiniti.m25launcher
 
+import android.Manifest
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.app.ActivityManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ResolveInfo
 import android.graphics.drawable.Drawable
 import android.media.AudioManager
 import android.os.Build
@@ -37,20 +40,36 @@ object AppLauncher {
 
     val SPEEDCAM_CANDIDATES = listOf(PKG_SPEEDCAM, PKG_SPEEDCAM_LEGACY)
 
+    private const val POLICY_CONTROL_KEY = "policy_control"
+
+    private val PROTECTED_BACKGROUND_PACKAGES = setOf(
+        "android",
+        "com.google.android.gms",
+        "com.google.android.gsf",
+        "com.google.android.googlequicksearchbox",
+        "com.google.android.tts",
+        "com.google.android.as",
+        "com.google.android.webview"
+    )
+
+    private val PROTECTED_PACKAGE_PREFIXES = listOf(
+        "com.android.",
+        "com.syu.",
+        "com.fyt.",
+        "com.google.android.inputmethod"
+    )
+
     data class DrawerAppItem(
         val label: String,
         val packageName: String,
         val icon: Drawable
     )
 
-    /**
-     * Queries all launchable apps on the head unit (excluding this launcher) for the hidden drawer.
-     */
     @Suppress("DEPRECATION")
-    fun queryDrawerApps(context: Context): List<DrawerAppItem> {
+    private fun queryLauncherActivities(context: Context): List<ResolveInfo> {
         val pm = context.packageManager
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        val activities = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             pm.queryIntentActivities(
                 intent,
                 PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_ALL.toLong())
@@ -58,6 +77,14 @@ object AppLauncher {
         } else {
             pm.queryIntentActivities(intent, 0)
         }
+    }
+
+    /**
+     * Queries all launchable apps on the head unit (excluding this launcher) for the hidden drawer.
+     */
+    fun queryDrawerApps(context: Context): List<DrawerAppItem> {
+        val pm = context.packageManager
+        val activities = queryLauncherActivities(context)
 
         val seen = HashSet<String>()
         val items = ArrayList<DrawerAppItem>()
@@ -278,5 +305,95 @@ object AppLauncher {
                     or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                 )
         }
+    }
+
+    /**
+     * Returns the `Settings.Global.policy_control` string that hides the status bar specifically
+     * for Google Maps and Spotify while leaving FYT SystemUI and the launcher intact.
+     */
+    fun buildSplitPolicyControlValue(enabled: Boolean): String =
+        if (enabled) "immersive.status=$PKG_MAPS,$PKG_SPOTIFY" else ""
+
+    fun hasWriteSecureSettingsPermission(context: Context): Boolean =
+        context.checkCallingOrSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) ==
+            PackageManager.PERMISSION_GRANTED
+
+    /**
+     * Applies or clears `policy_control` status-bar immersion for split-screen apps when
+     * `WRITE_SECURE_SETTINGS` has been granted via ADB.
+     */
+    fun setSplitImmersiveMode(context: Context, enabled: Boolean): Boolean {
+        if (!hasWriteSecureSettingsPermission(context)) {
+            Log.d(TAG, "Skipping policy_control=$enabled (WRITE_SECURE_SETTINGS not granted)")
+            return false
+        }
+        val targetValue = buildSplitPolicyControlValue(enabled)
+        return try {
+            val currentValue = Settings.Global.getString(context.contentResolver, POLICY_CONTROL_KEY)
+            if ((enabled && currentValue == targetValue) || (!enabled && currentValue.isNullOrEmpty())) {
+                return true
+            }
+            Settings.Global.putString(context.contentResolver, POLICY_CONTROL_KEY, targetValue)
+            Log.i(TAG, "Updated Settings.Global.policy_control='$targetValue'")
+            true
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Failed to update policy_control", e)
+            false
+        }
+    }
+
+    /**
+     * Dismisses transient system shades/dialogs before docking split-screen windows on API < 31.
+     */
+    @Suppress("DEPRECATION")
+    fun collapseSystemDialogs(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) return
+        try {
+            context.sendBroadcast(Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS))
+        } catch (e: Exception) {
+            Log.d(TAG, "Unable to collapse system dialogs: ${e.message}")
+        }
+    }
+
+    /**
+     * Returns true when [pkg] is safe to terminate with [ActivityManager.killBackgroundProcesses]
+     * upon ACC/screen-off. Preserves FYT MCU/CANbus daemons, core Android, GMS, Google Voice, IMEs, and self.
+     */
+    fun shouldKillOnScreenOff(pkg: String, selfPkg: String): Boolean {
+        if (pkg.isBlank() || pkg == selfPkg) return false
+        if (pkg in PROTECTED_BACKGROUND_PACKAGES) return false
+        return PROTECTED_PACKAGE_PREFIXES.none { pkg.startsWith(it) }
+    }
+
+    /**
+     * Reclaims background memory across non-system user apps after returning home on ACC/screen-off.
+     * Note: [ActivityManager.killBackgroundProcesses] leaves protected FYT/GMS daemons untouched;
+     * full force-stop of arbitrary third-party apps requires system/root privileges on Android 10.
+     */
+    fun cleanupBackgroundAppsOnScreenOff(context: Context): Int {
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager ?: return 0
+        val selfPkg = context.packageName
+
+        val candidates = LinkedHashSet<String>()
+        candidates.addAll(listOf(PKG_MAPS, PKG_SPOTIFY, PKG_SPEEDCAM, PKG_SPEEDCAM_LEGACY))
+        for (info in queryLauncherActivities(context)) {
+            info.activityInfo?.packageName?.let { candidates.add(it) }
+        }
+        am.runningAppProcesses?.forEach { proc ->
+            proc.pkgList?.forEach { candidates.add(it) }
+        }
+
+        var killedCount = 0
+        for (pkg in candidates) {
+            if (!shouldKillOnScreenOff(pkg, selfPkg)) continue
+            try {
+                am.killBackgroundProcesses(pkg)
+                killedCount++
+            } catch (e: Exception) {
+                Log.w(TAG, "killBackgroundProcesses failed for $pkg: ${e.message}")
+            }
+        }
+        Log.i(TAG, "ACC-off cleanup dispatched killBackgroundProcesses for $killedCount package(s)")
+        return killedCount
     }
 }

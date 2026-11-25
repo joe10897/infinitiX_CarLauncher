@@ -27,13 +27,23 @@ class AutoDriveService : AccessibilityService() {
     private val mainHandler = Handler(Looper.getMainLooper())
     private var lastTriggerElapsedMs: Long? = null
     private var isReceiverRegistered = false
+    private var swcLearnCallback: ((Int) -> Unit)? = null
+    private var swcLearnTimeoutRunnable: Runnable? = null
+    private var screenOffCleanupRunnable: Runnable? = null
 
     private val screenWakeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val action = intent?.action ?: return
+            if (action == Intent.ACTION_SCREEN_OFF) {
+                handleAccScreenOff()
+                return
+            }
             if (action != Intent.ACTION_SCREEN_ON && action != Intent.ACTION_USER_PRESENT) {
                 return
             }
+
+            screenOffCleanupRunnable?.let { mainHandler.removeCallbacks(it) }
+            screenOffCleanupRunnable = null
 
             val now = SystemClock.elapsedRealtime()
             if (!shouldTriggerWithCooldown(now, lastTriggerElapsedMs, COOLDOWN_MS)) {
@@ -60,10 +70,22 @@ class AutoDriveService : AccessibilityService() {
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
         val keyCode = event.keyCode
-        if (keyCode != KeyEvent.KEYCODE_VOICE_ASSIST &&
-            keyCode != KeyEvent.KEYCODE_ASSIST &&
-            keyCode != KeyEvent.KEYCODE_SEARCH
-        ) {
+        val learnCallback = swcLearnCallback
+        if (learnCallback != null) {
+            if (SwcKeyStore.isProtectedSystemKey(keyCode)) {
+                return false
+            }
+            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                cancelSwcLearnMode()
+                SwcKeyStore.saveLearnedKeyCode(this, keyCode)
+                Log.i(TAG, "Captured SWC voice keyCode=$keyCode")
+                learnCallback.invoke(keyCode)
+            }
+            return true
+        }
+
+        val learnedKeyCode = SwcKeyStore.getLearnedKeyCode(this)
+        if (!SwcKeyStore.isVoiceTriggerKey(keyCode, learnedKeyCode)) {
             return false
         }
         if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
@@ -71,6 +93,62 @@ class AutoDriveService : AccessibilityService() {
             VoiceTriggerActivity.launch(this)
         }
         return true
+    }
+
+    /**
+     * Enters one-shot key capture mode so the next non-system steering-wheel button press is
+     * stored as the voice shortcut key.
+     */
+    fun startSwcLearnMode(
+        timeoutMs: Long = SWC_LEARN_TIMEOUT_MS,
+        onCaptured: (Int) -> Unit,
+        onTimeout: () -> Unit
+    ) {
+        cancelSwcLearnMode()
+        swcLearnCallback = onCaptured
+        val timeoutRunnable = Runnable {
+            if (swcLearnCallback != null) {
+                cancelSwcLearnMode()
+                onTimeout()
+            }
+        }
+        swcLearnTimeoutRunnable = timeoutRunnable
+        mainHandler.postDelayed(timeoutRunnable, timeoutMs)
+    }
+
+    fun cancelSwcLearnMode() {
+        swcLearnTimeoutRunnable?.let { mainHandler.removeCallbacks(it) }
+        swcLearnTimeoutRunnable = null
+        swcLearnCallback = null
+    }
+
+    private fun handleAccScreenOff() {
+        Log.i(TAG, "ACC/screen-off detected; pausing media and releasing background apps")
+        cancelSwcLearnMode()
+        mainHandler.removeCallbacksAndMessages(null)
+        AppLauncher.setSplitImmersiveMode(this, false)
+        AppLauncher.dispatchMediaKey(this, KeyEvent.KEYCODE_MEDIA_PAUSE)
+
+        // Return to the lightweight launcher so active map/media UIs move to background first.
+        val homeIntent = Intent(this, MainActivity::class.java).apply {
+            addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+            )
+        }
+        try {
+            startActivity(homeIntent)
+        } catch (e: Exception) {
+            Log.w(TAG, "Unable to return to MainActivity on screen off: ${e.message}")
+        }
+
+        val cleanupTask = Runnable {
+            screenOffCleanupRunnable = null
+            AppLauncher.cleanupBackgroundAppsOnScreenOff(this)
+        }
+        screenOffCleanupRunnable = cleanupTask
+        mainHandler.postDelayed(cleanupTask, DELAY_SCREEN_OFF_CLEANUP_MS)
     }
 
     override fun onInterrupt() {
@@ -132,6 +210,8 @@ class AutoDriveService : AccessibilityService() {
 
         val splitToggleAt = DELAY_MAPS_AFTER_PREWARM_MS + DELAY_SPLIT_TOGGLE_AFTER_VOICE_NAV_MS
         mainHandler.postDelayed({
+            AppLauncher.setSplitImmersiveMode(this, true)
+            AppLauncher.collapseSystemDialogs(this)
             if (!isCurrentlyInSplitScreen()) {
                 val toggled = performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN)
                 Log.d(TAG, "GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN result=$toggled")
@@ -195,6 +275,8 @@ class AutoDriveService : AccessibilityService() {
         // Step 3: Enter split-screen (Maps docks left; FYT Recents with Spotify #1 opens right)
         val splitToggleAt = mapsAt + DELAY_SPLIT_TOGGLE_AFTER_MAPS_MS
         mainHandler.postDelayed({
+            AppLauncher.setSplitImmersiveMode(this, true)
+            AppLauncher.collapseSystemDialogs(this)
             if (!isCurrentlyInSplitScreen()) {
                 val toggled = performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN)
                 Log.d(TAG, "GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN result=$toggled")
@@ -373,6 +455,7 @@ class AutoDriveService : AccessibilityService() {
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_ON)
             addAction(Intent.ACTION_USER_PRESENT)
+            addAction(Intent.ACTION_SCREEN_OFF)
         }
         registerReceiver(screenWakeReceiver, filter)
         isReceiverRegistered = true
@@ -405,6 +488,8 @@ class AutoDriveService : AccessibilityService() {
         const val DELAY_SPOTIFY_AFTER_SPLIT_MS = 800L
         const val DELAY_RIGHT_PANE_VERIFY_MS = 700L
         const val DELAY_MEDIA_PLAY_AFTER_DOCK_MS = 1000L
+        const val DELAY_SCREEN_OFF_CLEANUP_MS = 750L
+        const val SWC_LEARN_TIMEOUT_MS = 12_000L
 
         @Volatile
         var instance: AutoDriveService? = null

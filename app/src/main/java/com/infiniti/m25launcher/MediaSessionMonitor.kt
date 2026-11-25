@@ -2,6 +2,7 @@ package com.infiniti.m25launcher
 
 import android.content.ComponentName
 import android.content.Context
+import android.graphics.Bitmap
 import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
@@ -14,7 +15,7 @@ import android.util.Log
 
 /**
  * Monitors active system MediaSessions (prioritizing Spotify) to drive live track title,
- * artist, play/pause state, and an optical playback progress bar on the dashboard.
+ * artist, album artwork, ambient color tinting, playback timecode, and optical progress bar.
  */
 class MediaSessionMonitor(
     private val context: Context,
@@ -27,7 +28,11 @@ class MediaSessionMonitor(
         val title: String? = null,
         val artist: String? = null,
         val isPlaying: Boolean = false,
-        val progressRatio: Float = 0f
+        val positionMs: Long = 0L,
+        val durationMs: Long = 0L,
+        val progressRatio: Float = 0f,
+        val albumArt: Bitmap? = null,
+        val albumAccentColor: Int? = null
     )
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -35,6 +40,9 @@ class MediaSessionMonitor(
     private var sessionManager: MediaSessionManager? = null
     private var activeController: MediaController? = null
     private var isStarted = false
+    private var cachedArtKey: String? = null
+    private var cachedArtBitmap: Bitmap? = null
+    private var cachedAccentColor: Int? = null
 
     private val progressTicker = object : Runnable {
         override fun run() {
@@ -144,11 +152,54 @@ class MediaSessionMonitor(
             // Ignore unregister race during session teardown.
         }
         activeController = null
+        clearArtCache()
+    }
+
+    private fun clearArtCache() {
+        cachedArtKey = null
+        cachedArtBitmap = null
+        cachedAccentColor = null
+    }
+
+    private fun refreshArtCacheIfNeeded(
+        title: String?,
+        artist: String?,
+        metadata: MediaMetadata?
+    ) {
+        val rawArt = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+            ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
+            ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
+        val artKey = "${title.orEmpty()}|${artist.orEmpty()}|${rawArt?.generationId ?: 0}"
+        if (artKey == cachedArtKey) return
+
+        cachedArtKey = artKey
+        if (rawArt == null || rawArt.isRecycled || rawArt.width <= 0 || rawArt.height <= 0) {
+            cachedArtBitmap = null
+            cachedAccentColor = null
+            return
+        }
+
+        try {
+            val scaled = Bitmap.createScaledBitmap(rawArt, ART_PREVIEW_PX, ART_PREVIEW_PX, true)
+            cachedArtBitmap = scaled
+            val sample = Bitmap.createScaledBitmap(scaled, ART_SAMPLE_PX, ART_SAMPLE_PX, true)
+            val pixels = IntArray(ART_SAMPLE_PX * ART_SAMPLE_PX)
+            sample.getPixels(pixels, 0, ART_SAMPLE_PX, 0, 0, ART_SAMPLE_PX, ART_SAMPLE_PX)
+            if (sample !== scaled) {
+                sample.recycle()
+            }
+            cachedAccentColor = extractAmbientAccentRgb(pixels)
+        } catch (e: Exception) {
+            Log.w(TAG, "Unable to process album artwork: ${e.message}")
+            cachedArtBitmap = null
+            cachedAccentColor = null
+        }
     }
 
     private fun emitCurrentControllerState() {
         val controller = activeController
         if (controller == null) {
+            clearArtCache()
             onStateChanged(NowPlayingState(hasNotificationAccess = true, hasActiveSession = false))
             return
         }
@@ -174,6 +225,8 @@ class MediaSessionMonitor(
             0L
         }
 
+        refreshArtCacheIfNeeded(title, artist, metadata)
+
         onStateChanged(
             NowPlayingState(
                 hasNotificationAccess = true,
@@ -181,7 +234,11 @@ class MediaSessionMonitor(
                 title = title,
                 artist = artist,
                 isPlaying = isPlaying,
-                progressRatio = computeProgressRatio(positionMs, durationMs)
+                positionMs = positionMs,
+                durationMs = durationMs,
+                progressRatio = computeProgressRatio(positionMs, durationMs),
+                albumArt = cachedArtBitmap,
+                albumAccentColor = cachedAccentColor
             )
         )
     }
@@ -196,6 +253,8 @@ class MediaSessionMonitor(
     companion object {
         private const val TAG = "Y51MediaMonitor"
         private const val PROGRESS_TICK_MS = 1000L
+        private const val ART_PREVIEW_PX = 160
+        private const val ART_SAMPLE_PX = 16
 
         fun isNotificationAccessEnabled(context: Context): Boolean {
             val enabledListeners = Settings.Secure.getString(
@@ -228,6 +287,57 @@ class MediaSessionMonitor(
         fun computeProgressRatio(positionMs: Long, durationMs: Long): Float {
             if (durationMs <= 0L || positionMs <= 0L) return 0f
             return (positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+        }
+
+        fun formatTrackTimecode(positionMs: Long, durationMs: Long): String {
+            if (durationMs <= 0L) return "--:-- / --:--"
+            val clampedPos = positionMs.coerceIn(0L, durationMs)
+            val posText = TripTelemetryTracker.formatDuration(clampedPos)
+            val durText = TripTelemetryTracker.formatDuration(durationMs)
+            return "$posText / $durText"
+        }
+
+        /**
+         * Extracts a tasteful chroma-weighted ambient RGB tint (`0x00RRGGBB`) from sampled
+         * ARGB album pixels so glass refractions subtly echo the current track without glaring.
+         */
+        fun extractAmbientAccentRgb(pixels: IntArray): Int? {
+            if (pixels.isEmpty()) return null
+            var sumR = 0.0
+            var sumG = 0.0
+            var sumB = 0.0
+            var totalWeight = 0.0
+
+            for (pixel in pixels) {
+                val r = (pixel ushr 16) and 0xFF
+                val g = (pixel ushr 8) and 0xFF
+                val b = pixel and 0xFF
+                val maxCh = maxOf(r, g, b)
+                val minCh = minOf(r, g, b)
+                if (maxCh < 28 || minCh > 238) continue
+
+                val chroma = maxCh - minCh
+                val weight = 1.0 + (chroma / 255.0) * 4.0
+                sumR += r * weight
+                sumG += g * weight
+                sumB += b * weight
+                totalWeight += weight
+            }
+
+            if (totalWeight <= 0.0) return null
+            var r = Math.round(sumR / totalWeight).toInt().coerceIn(0, 255)
+            var g = Math.round(sumG / totalWeight).toInt().coerceIn(0, 255)
+            var b = Math.round(sumB / totalWeight).toInt().coerceIn(0, 255)
+
+            // Lift overly dark covers slightly so ambient glass caustic remains perceptible.
+            val peak = maxOf(r, g, b)
+            if (peak in 1..119) {
+                val scale = 140f / peak.toFloat()
+                r = Math.round(r * scale).coerceAtMost(255)
+                g = Math.round(g * scale).coerceAtMost(255)
+                b = Math.round(b * scale).coerceAtMost(255)
+            }
+            return (r shl 16) or (g shl 8) or b
         }
     }
 }

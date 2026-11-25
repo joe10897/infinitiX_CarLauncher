@@ -64,24 +64,26 @@ flowchart LR
 
 | 區域 | 元件 / 按鈕 | 對應行為與目標套件 |
 | :--- | :--- | :--- |
-| **頂部狀態列** | Auto-Drive 狀態指示 | 偵測 `AutoDriveService` 啟用狀態；未開啟時點擊直接跳轉 `Settings.ACTION_ACCESSIBILITY_SETTINGS` |
-| **頂部狀態列** | `Y51 // FINE VISION` | 隱藏手勢：**長按開啟「全部應用程式抽屜」**（4 欄液態玻璃清單） |
-| **頂部狀態列** | `SETTINGS` 齒輪鍵 | 一鍵跳轉 Android 系統設定（`Settings.ACTION_SETTINGS`），快速管理 Wi-Fi、藍牙與預設桌面 |
-| **頂部狀態列** | 右側即時時鐘 | `TextClock` 自動同步系統 24 小時制時間（`HH:mm`） |
-| **左欄** | GPS 數位時速與單趟微數據 | 內建 `< 2 km/h` 靜止漂移濾波、精度狀態（`LOCK` / `WEAK FIX`）、光學速度條與 `MAX / AVG / TIME` 單趟數據（長按 `GPS SPEED` 可歸零） |
-| **左欄** | `VOICE COMMAND` | 短按一鍵啟動語音路由器；**長按編輯「回家 / 去公司」語音快捷地址** |
-| **左欄** | `RUN SPLIT ROUTINE` | 手動觸發完整行車自動化流程（略過 5 分鐘冷卻限制） |
-| **中欄上排** | `SPLIT NAVIGATION` | 寬幅主操作卡，啟動 Google Maps 並由無障礙服務觸發左右分屏，並排啟動 Spotify |
-| **中欄下左** | `SPEEDCAM HUD` | 啟動神盾測速照相（`tw.com.ainvest.outpack`，備援 `tw.com.aegis.speedcam` 與「神盾」標籤搜尋） |
-| **中欄下右** | `VEHICLE INFO` | 啟動方易通原車資訊（`com.syu.carinfo`，若未安裝則 fallback 至 `com.syu.canbus`） |
-| **右欄** | 即時曲目標題與光學進度條 | 搭配 `MediaNotificationService` 同步顯示曲名、歌手與播放進度條；短按開啟 Spotify，**長按跳轉通知存取設定啟用曲目同步** |
-| **右欄** | `PLAY / PAUSE`、`PREV`、`NEXT` | 透過 `AudioManager.dispatchMediaKeyEvent` 控制播放，並依即時播放狀態切換 `PLAY` / `PAUSE` 圖示與標籤 |
+| **頂部狀態列** | Infiniti 銘牌與系統狀態體檢 | 嵌入 Infiniti Y51 幾何雙拱銘牌與綠/紫/橘狀態燈；**點擊彈出「系統狀態體檢面板」**（免 ADB 一鍵檢查預設桌面、無障礙、封面同步、定位/麥克風、背景省電白名單，並顯示 `v1.2` 版本號） |
+| **頂部狀態列** | `APPS` 應用抽屜 | **短按直開「全部應用程式抽屜」**（4 欄液態玻璃清單，**長按任意 App 圖示即可釘選至最愛首排**） |
+| **頂部狀態列** | `設定` 齒輪鍵 | 一鍵跳轉 Android 系統設定（`Settings.ACTION_SETTINGS`），快速管理 Wi-Fi、藍牙與預設桌面 |
+| **頂部狀態列** | 日期星期與即時時鐘 | `TextClock` 自動同步日期星期（`MM.dd EEE`）與 24 小時制等寬時間（`HH:mm`） |
+| **左欄** | Fine Vision 雙環精密時速錶 | 240° 精密刻度光弧、`ValueAnimator` 絲滑數字滾動、八方位羅盤航向（`NE 042°`）、`>= 115 km/h` 琥珀微光警示與 `MAX / AVG / TIME` 單趟數據（長按 `GPS 時速` 歸零） |
+| **左欄** | `語音指令` / `一鍵出發` | 短按開啟語音路由器（**長按編輯「回家 / 去公司」地址**）；`一鍵出發` 略過冷卻啟動完整行車排程 |
+| **中欄上排** | `分屏導航` (`50:50 SPLIT`) | 內含工藝幾何浮水印與物理阻尼微縮放，啟動 Google Maps 並由無障礙服務觸發左 Maps + 右 Spotify 分屏 |
+| **中欄下左** | `神盾測速` (`AEGIS RADAR`) | 啟動神盾測速照相（`tw.com.ainvest.outpack`，備援 `tw.com.aegis.speedcam` 與「神盾」標籤搜尋） |
+| **中欄下右** | `原車資訊` (`SYU · CANBUS`) | 啟動方易通原車資訊（`com.syu.carinfo`，若未安裝則 fallback 至 `com.syu.canbus`） |
+| **右欄** | 專輯封面氛圍玻璃與時間碼 | 同步 Spotify 真實專輯封面縮圖、低亮度氛圍玻璃底色與色調折射，搭配光學進度條與等寬時間碼（`01:24 / 03:58`）；短按開啟 Spotify，**長按開通知存取** |
+| **右欄** | `PLAY / PAUSE`、`PREV`、`NEXT` | 具 `97%` 按壓微縮放與觸覺回饋，透過 `AudioManager.dispatchMediaKeyEvent` 控制播放並同步切換圖示 |
 
 ---
 
 ## 零點擊行車管家 (`AutoDriveService`) 自動化流程
 
-`AutoDriveService` 繼承自 `AccessibilityService`，於綁定後動態註冊 `BroadcastReceiver` 監聽車機喚醒廣播 `Intent.ACTION_SCREEN_ON` 與 `Intent.ACTION_USER_PRESENT`。
+`AutoDriveService` 繼承自 `AccessibilityService`，於綁定後動態註冊 `BroadcastReceiver` 監聽車機喚醒與熄火廣播（`ACTION_SCREEN_ON`、`ACTION_USER_PRESENT`、`ACTION_SCREEN_OFF`）：
+
+- **分屏狀態列自動收縮**：進入 Maps + Spotify 分屏時，若已透過 ADB 授予 `WRITE_SECURE_SETTINGS`，自動套用套件限定 `Settings.Global.policy_control = immersive.status=com.google.android.apps.maps,com.spotify.music`，返回桌面或螢幕關閉時自動清除還原。
+- **ACC 熄火 / 關屏記憶體釋放**：收到 `Intent.ACTION_SCREEN_OFF` 時立即取消未完成排程、發送 `KEYCODE_MEDIA_PAUSE` 暫停音樂、切回 `MainActivity` 停止前景渲染，並於 750ms 後對非系統之第三方應用呼叫 `ActivityManager.killBackgroundProcesses()`（完整保留 `com.syu.*`、`com.fyt.*`、GMS、Google 語音與輸入法；原生 Android 10 安全機制下，非 root/system 應用無法對其他 App 執行強制 `force-stop`）。
 
 ```mermaid
 sequenceDiagram
@@ -110,10 +112,12 @@ sequenceDiagram
 
 利用車機內建 Google 語音引擎（`SpeechRecognizer`、`zh-TW`），提供駕駛專用的輕量指令路由懸浮視窗：
 
-- **三種喚醒入口（支援行車中於任何 App 上層喚醒）**：
+- **四種喚醒與配對機制（支援行車中於任何 App 上層喚醒）**：
   1. 點擊桌面左欄 `VOICE COMMAND` 按鈕。
-  2. 透過 `AutoDriveService.onKeyEvent()` 攔截方向盤方控 `KEYCODE_VOICE_ASSIST` / `KEYCODE_ASSIST`。
-  3. 於方易通「方控學習」將語音鍵綁定開啟 **`Y51 Voice`**（`CATEGORY_LAUNCHER`）或系統 `ACTION_ASSIST` / `ACTION_VOICE_COMMAND`。
+  2. 透過 `AutoDriveService.onKeyEvent()` 攔截系統語音鍵（`KEYCODE_VOICE_ASSIST` / `KEYCODE_ASSIST` / `KEYCODE_SEARCH`）或使用者自訂綁定的方控按鍵碼。
+  3. **HUD 一鍵學習方控鍵（`BIND SWC KEY`）**：點擊語音視窗上方 `BIND SWC KEY`，於 12 秒內按下車機方向盤實體語音鍵即可儲存對應 `KeyCode`（需先啟用無障礙服務；系統僅保護 `Back`/`Home`/音量鍵）。
+  4. 於方易通「方控學習」將語音鍵直接綁定啟動 **`Y51 Voice`**（`CATEGORY_LAUNCHER`），或系統 `ACTION_ASSIST` / `ACTION_VOICE_COMMAND` / `SEARCH_LONG_PRESS`。
+- **語音引擎雙重備援與錯誤診斷**：若車機內嵌 Google `SpeechRecognizer` 回報 `ERROR_CLIENT` / `ERROR_AUDIO` / `ERROR_SERVER`，將自動顯示錯誤碼並轉由系統 Google 語音彈窗（`RecognizerIntent.ACTION_RECOGNIZE_SPEECH`）接手辨識；長按 `GOOGLE ASSISTANT` 可開啟系統語音輸入設定。
 - **音樂閃避降音**：收音時申請 `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK` 降低背景音樂音量，辨識結束立即恢復。
 
 | 口語指令範例 | 解析動作 (`VoiceAction`) | 執行行為 |
@@ -139,14 +143,20 @@ infinitiX_CarLauncher/
 │       ├── main/
 │       │   ├── AndroidManifest.xml               # HOME Launcher 註冊與 AutoDriveService 宣告
 │       │   ├── java/com/infiniti/m25launcher/
-│       │   │   ├── MainActivity.kt               # 三欄儀表主畫面、GPS 時速、即時媒體、抽屜與快捷彈窗
-│       │   │   ├── TripTelemetryTracker.kt       # GPS 低速去雜訊與單趟最高速/均速/時間統計
+│       │   │   ├── MainActivity.kt               # 三欄儀表主畫面、雙環時速錶、專輯氛圍媒體、體檢與抽屜彈窗
+│       │   │   ├── FineVisionSpeedGaugeView.kt   # 240° Fine Vision 精密雙環刻度光弧與阻尼動畫元件
+│       │   │   ├── TactileFeedbackHelper.kt      # 全介面車規 97% 物理按壓微縮放與觸覺回饋
+│       │   │   ├── CockpitThemeMode.kt           # 日間抗反光 / 夜間低眩光時段自動切換判斷
+│       │   │   ├── SystemHealthHelper.kt         # 免 ADB 五項車機權限/省電白名單檢測與一鍵導向
+│       │   │   ├── PinnedAppsStore.kt            # 應用程式抽屜長按釘選最愛首排儲存與排序
+│       │   │   ├── TripTelemetryTracker.kt       # GPS 去雜訊、八方位羅盤、超速警示與單趟統計
 │       │   │   ├── MediaNotificationService.kt   # 系統通知監聽錨點服務（供 MediaSession 存取）
-│       │   │   ├── MediaSessionMonitor.kt        # Spotify / 系統媒體曲目、狀態與進度條同步
+│       │   │   ├── MediaSessionMonitor.kt        # Spotify 曲目、專輯封面、氛圍主色萃取與時間碼同步
 │       │   │   ├── SavedPlacesStore.kt           # 語音「回家 / 去公司」地址本地儲存
-│       │   │   ├── VoiceTriggerActivity.kt       # 液態玻璃語音收音懸浮介面、音訊閃避與提示音
+│       │   │   ├── SwcKeyStore.kt                # 方向盤自訂語音方控 KeyCode 本地儲存與系統鍵保護
+│       │   │   ├── VoiceTriggerActivity.kt       # 液態玻璃語音收音懸浮介面、方控綁定與彈窗備援
 │       │   │   ├── VoiceCommandRouter.kt         # 中英口語指令解析與分屏/導航/媒體路由
-│       │   │   ├── AutoDriveService.kt           # 喚醒廣播監聽、方控按鍵攔截與分屏排程服務
+│       │   │   ├── AutoDriveService.kt           # 喚醒/熄火廣播監聽、方控攔截與分屏排程服務
 │       │   │   ├── AppLauncher.kt                # 套件備援啟動、全部 App 查詢、媒體鍵發送與全螢幕控制
 │       │   │   ├── DashboardBackdropDrawable.kt  # 低眩光環境光暈底層（提供玻璃折射背景）
 │       │   │   ├── LiquidGlassDrawable.kt        # API 26+ 多層液態玻璃與漸層邊框 Drawable
@@ -191,12 +201,12 @@ infinitiX_CarLauncher/
 adb install -r app\build\outputs\apk\debug\app-debug.apk
 ```
 
-### 3. 車機端初次啟用設定
+### 3. 車機端初次啟用設定（支援純 APK 安裝、免 ADB）
 
-1. **設為預設車機桌面**：安裝後按車機實體 `HOME` 鍵，選擇 `Y51 DriveOS` 並設為「一律採用」。
-2. **授與定位與麥克風權限**：首次啟動允許定位與錄音權限（左欄 GPS 時速錶與語音路由器使用）。
-3. **啟用無障礙自動管家**：點擊頂部 `INFINITI Y51 | AUTO-DRIVE OFF - TAP TO ENABLE` 跳轉系統無障礙設定，開啟 `Y51 Auto-Drive Service`。
-4. **（選用）設定方向盤方控語音鍵**：於方易通「方控學習」將方向盤語音鍵對應系統語音鍵，或直接綁定啟動 **`Y51 Voice`**，即可於任何畫面按一下方向盤開始講話。
+1. **安裝 APK（無需電腦 / ADB）**：將 `app-debug.apk` 透過隨身碟或 Google Drive 下載至車機直接安裝；可於抽屜或系統體檢面板右上角確認版本號（`v1.2 · 2026.11.26`）。
+2. **一鍵完成全部授權**：點擊頂部左上角 **Infiniti 狀態列** 開啟「**系統狀態體檢面板**」，依序點擊橘燈項目即可完成 5 項授權（預設桌面、無障礙管家、Spotify 封面同步、定位/麥克風、背景省電白名單），全部亮綠燈即完成。
+3. **設定方向盤方控語音鍵**：打開語音介面點擊 `綁定方控鍵` 後於 12 秒內按方向盤按鍵配對；若車機方控晶片未上報標準 Android `KeyEvent`，請改於方易通「方控學習」將該按鍵直接綁定啟動 **`Y51 Voice`**。
+4. **（選用／僅有 ADB 環境時）分屏狀態列自動隱藏**：若日後有連接電腦 ADB，可執行一次 `adb shell pm grant com.infiniti.m25launcher android.permission.WRITE_SECURE_SETTINGS`；無 ADB 時亦可於車機「工廠設定 → 顯示 / UI 設定」查看是否內建隱藏狀態列選項。
 
 ---
 

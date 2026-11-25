@@ -22,7 +22,8 @@ import android.graphics.drawable.Drawable
 class LiquidGlassDrawable(
     private val cornerRadiusDp: Float = 10f,
     private val variant: Variant = Variant.PANEL,
-    private val density: Float = Resources.getSystem().displayMetrics.density
+    private val density: Float = Resources.getSystem().displayMetrics.density,
+    private val isDaytime: Boolean = false
 ) : Drawable() {
 
     enum class Variant {
@@ -60,6 +61,18 @@ class LiquidGlassDrawable(
 
     private var isPressedState = false
     private var alphaMultiplier = 255
+    private var ambientTintRgb: Int? = null
+
+    /**
+     * Overrides the subtle lower-right internal caustic glow (e.g. with album art dominant hue).
+     */
+    fun setAmbientTintColor(rgbColor: Int?) {
+        val masked = rgbColor?.and(0x00FFFFFF)
+        if (ambientTintRgb == masked) return
+        ambientTintRgb = masked
+        rebuildShaders()
+        invalidateSelf()
+    }
 
     override fun isStateful(): Boolean = true
 
@@ -112,16 +125,18 @@ class LiquidGlassDrawable(
             Shader.TileMode.CLAMP
         )
 
-        // Upper liquid meniscus specular sheen (softer for nested sub-panels)
+        // Upper liquid meniscus specular sheen (sharper catchlight in daytime cabin sunlight)
         val sheenTopAlpha = when {
-            isPressedState -> Color.parseColor("#38FFFFFF")
+            isPressedState -> Color.parseColor("#42FFFFFF")
+            variant == Variant.SUB_PANEL && isDaytime -> Color.parseColor("#24FFFFFF")
             variant == Variant.SUB_PANEL -> Color.parseColor("#18FFFFFF")
+            isDaytime -> Color.parseColor("#34FFFFFF")
             else -> Color.parseColor("#28FFFFFF")
         }
         val sheenMidAlpha = if (variant == Variant.SUB_PANEL) {
-            Color.parseColor("#07FFFFFF")
+            Color.parseColor("#08FFFFFF")
         } else {
-            Color.parseColor("#0CFFFFFF")
+            Color.parseColor(if (isDaytime) "#12FFFFFF" else "#0CFFFFFF")
         }
         sheenPaint.shader = LinearGradient(
             l, t, l + w * 0.35f, t + h * 0.62f,
@@ -134,17 +149,20 @@ class LiquidGlassDrawable(
             Shader.TileMode.CLAMP
         )
 
-        // Subtle lower-right internal refraction bounce
+        // Subtle lower-right internal refraction bounce (optionally tinted by album art hue)
+        val causticRgb = ambientTintRgb ?: DEFAULT_CAUSTIC_RGB
+        val causticAlpha = when {
+            isPressedState -> 0x40
+            ambientTintRgb != null -> 0x38
+            variant == Variant.ACCENT -> 0x2E
+            else -> 0x1D
+        }
         causticPaint.shader = RadialGradient(
             r - w * 0.14f,
             b - h * 0.12f,
             maxOf(w, h) * 0.62f,
             intArrayOf(
-                when {
-                    isPressedState -> Color.parseColor("#387D85E6")
-                    variant == Variant.ACCENT -> Color.parseColor("#2E7D85E6")
-                    else -> Color.parseColor("#1D7D85E6")
-                },
+                (causticAlpha shl 24) or causticRgb,
                 Color.TRANSPARENT
             ),
             floatArrayOf(0f, 1f),
@@ -155,7 +173,11 @@ class LiquidGlassDrawable(
         innerBevelPaint.shader = LinearGradient(
             l, t, l, t + h * 0.55f,
             intArrayOf(
-                if (isPressedState) Color.parseColor("#3CFFFFFF") else Color.parseColor("#26FFFFFF"),
+                when {
+                    isPressedState -> Color.parseColor("#46FFFFFF")
+                    isDaytime -> Color.parseColor("#36FFFFFF")
+                    else -> Color.parseColor("#26FFFFFF")
+                },
                 Color.TRANSPARENT
             ),
             floatArrayOf(0f, 1f),
@@ -228,16 +250,16 @@ class LiquidGlassDrawable(
                 Color.parseColor("#707D85E6")
             )
             variant == Variant.SUB_PANEL -> intArrayOf(
-                Color.parseColor("#5CFFFFFF"),
-                Color.parseColor("#20FFFFFF"),
-                Color.parseColor("#14FFFFFF"),
-                Color.parseColor("#427D85E6")
+                Color.parseColor(if (isDaytime) "#7CFFFFFF" else "#5CFFFFFF"),
+                Color.parseColor(if (isDaytime) "#32FFFFFF" else "#20FFFFFF"),
+                Color.parseColor("#18FFFFFF"),
+                Color.parseColor(if (isDaytime) "#627D85E6" else "#427D85E6")
             )
             else -> intArrayOf(
-                Color.parseColor("#78FFFFFF"),
-                Color.parseColor("#2CA4AEFF"),
-                Color.parseColor("#18FFFFFF"),
-                Color.parseColor("#547D85E6")
+                Color.parseColor(if (isDaytime) "#A4FFFFFF" else "#78FFFFFF"),
+                Color.parseColor(if (isDaytime) "#42B4BEFF" else "#2CA4AEFF"),
+                Color.parseColor(if (isDaytime) "#28FFFFFF" else "#18FFFFFF"),
+                Color.parseColor(if (isDaytime) "#7A8C94F0" else "#547D85E6")
             )
         }
     }
@@ -281,6 +303,8 @@ class LiquidGlassDrawable(
     override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
 
     companion object {
+        private const val DEFAULT_CAUSTIC_RGB = 0x7D85E6
+
         /** Returns true when Android drawable state flags include pressed feedback. */
         fun hasPressedState(state: IntArray): Boolean =
             state.contains(android.R.attr.state_pressed)

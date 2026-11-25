@@ -1,6 +1,8 @@
 package com.infiniti.m25launcher
 
 import android.content.Intent
+import android.speech.SpeechRecognizer
+import android.view.KeyEvent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -123,5 +125,127 @@ class AutoDriveLogicTest {
         assertEquals(0f, MediaSessionMonitor.computeProgressRatio(10_000L, 0L), 0.001f)
         assertEquals(0.5f, MediaSessionMonitor.computeProgressRatio(90_000L, 180_000L), 0.001f)
         assertEquals(1f, MediaSessionMonitor.computeProgressRatio(200_000L, 180_000L), 0.001f)
+    }
+
+    @Test
+    fun swcKeyStore_matchesDefaultAndLearnedKeysWhileProtectingSystemKeys() {
+        assertTrue(SwcKeyStore.isVoiceTriggerKey(KeyEvent.KEYCODE_VOICE_ASSIST, null))
+        assertTrue(SwcKeyStore.isVoiceTriggerKey(KeyEvent.KEYCODE_ASSIST, null))
+        assertTrue(SwcKeyStore.isVoiceTriggerKey(KeyEvent.KEYCODE_SEARCH, null))
+
+        assertFalse(SwcKeyStore.isVoiceTriggerKey(KeyEvent.KEYCODE_F1, null))
+        assertTrue(SwcKeyStore.isVoiceTriggerKey(KeyEvent.KEYCODE_F1, KeyEvent.KEYCODE_F1))
+
+        assertFalse(SwcKeyStore.isVoiceTriggerKey(KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_BACK))
+        assertFalse(SwcKeyStore.isVoiceTriggerKey(KeyEvent.KEYCODE_HOME, KeyEvent.KEYCODE_HOME))
+        assertFalse(SwcKeyStore.isVoiceTriggerKey(KeyEvent.KEYCODE_VOLUME_UP, KeyEvent.KEYCODE_VOLUME_UP))
+        assertFalse(SwcKeyStore.isVoiceTriggerKey(KeyEvent.KEYCODE_UNKNOWN, KeyEvent.KEYCODE_UNKNOWN))
+        assertFalse(SwcKeyStore.isVoiceTriggerKey(0, 0))
+    }
+
+    @Test
+    fun appLauncher_buildSplitPolicyControlValue_targetsMapsAndSpotify() {
+        assertEquals(
+            "immersive.status=com.google.android.apps.maps,com.spotify.music",
+            AppLauncher.buildSplitPolicyControlValue(true)
+        )
+        assertEquals("", AppLauncher.buildSplitPolicyControlValue(false))
+    }
+
+    @Test
+    fun appLauncher_shouldKillOnScreenOff_protectsFytCoreAndSelf() {
+        val self = "com.infiniti.m25launcher"
+        assertTrue(AppLauncher.shouldKillOnScreenOff("com.google.android.apps.maps", self))
+        assertTrue(AppLauncher.shouldKillOnScreenOff("com.spotify.music", self))
+        assertTrue(AppLauncher.shouldKillOnScreenOff("tw.com.ainvest.outpack", self))
+
+        assertFalse(AppLauncher.shouldKillOnScreenOff(self, self))
+        assertFalse(AppLauncher.shouldKillOnScreenOff("", self))
+        assertFalse(AppLauncher.shouldKillOnScreenOff("android", self))
+        assertFalse(AppLauncher.shouldKillOnScreenOff("com.android.systemui", self))
+        assertFalse(AppLauncher.shouldKillOnScreenOff("com.syu.ms", self))
+        assertFalse(AppLauncher.shouldKillOnScreenOff("com.syu.canbus", self))
+        assertFalse(AppLauncher.shouldKillOnScreenOff("com.fyt.boot", self))
+        assertFalse(AppLauncher.shouldKillOnScreenOff("com.google.android.gms", self))
+        assertFalse(AppLauncher.shouldKillOnScreenOff("com.google.android.googlequicksearchbox", self))
+        assertFalse(AppLauncher.shouldKillOnScreenOff("com.google.android.inputmethod.latin", self))
+    }
+
+    @Test
+    fun voiceTrigger_identifiesActivityFallbackErrorsAndFormatsCodes() {
+        assertTrue(VoiceTriggerActivity.shouldTryActivityFallback(SpeechRecognizer.ERROR_CLIENT))
+        assertTrue(VoiceTriggerActivity.shouldTryActivityFallback(SpeechRecognizer.ERROR_AUDIO))
+        assertTrue(VoiceTriggerActivity.shouldTryActivityFallback(SpeechRecognizer.ERROR_SERVER))
+        assertFalse(VoiceTriggerActivity.shouldTryActivityFallback(SpeechRecognizer.ERROR_NO_MATCH))
+        assertEquals("AUDIO #3", VoiceTriggerActivity.formatSpeechErrorLabel(SpeechRecognizer.ERROR_AUDIO))
+        assertEquals("CLIENT #5", VoiceTriggerActivity.formatSpeechErrorLabel(SpeechRecognizer.ERROR_CLIENT))
+    }
+
+    @Test
+    fun tripTelemetryTracker_formatsCompassHeadingAndDetectsOverspeed() {
+        assertEquals("N 000°", TripTelemetryTracker.formatCompassHeading(0f))
+        assertEquals("NE 042°", TripTelemetryTracker.formatCompassHeading(42f))
+        assertEquals("E 090°", TripTelemetryTracker.formatCompassHeading(90f))
+        assertEquals("SW 225°", TripTelemetryTracker.formatCompassHeading(225f))
+        assertEquals("NW 315°", TripTelemetryTracker.formatCompassHeading(-45f))
+        assertEquals("N 000°", TripTelemetryTracker.formatCompassHeading(359.8f))
+        assertEquals("N 000°", TripTelemetryTracker.formatCompassHeading(Float.NaN))
+
+        assertFalse(TripTelemetryTracker.isOverspeed(114))
+        assertTrue(TripTelemetryTracker.isOverspeed(115))
+        assertTrue(TripTelemetryTracker.isOverspeed(132))
+    }
+
+    @Test
+    fun pinnedAppsStore_parsesSerializesAndSortsPinnedFirst() {
+        val parsed = PinnedAppsStore.parsePinnedList(" com.zlink , com.youtube , com.zlink , ")
+        assertEquals(listOf("com.zlink", "com.youtube"), parsed)
+        assertEquals("com.zlink,com.youtube", PinnedAppsStore.serializePinnedList(parsed))
+
+        val items = listOf("com.alpha", "com.youtube", "com.beta", "com.zlink")
+        val sorted = PinnedAppsStore.sortWithPinnedFirst(items, parsed) { it }
+        assertEquals(listOf("com.zlink", "com.youtube", "com.alpha", "com.beta"), sorted)
+    }
+
+    @Test
+    fun cockpitThemeMode_distinguishesDayAndNightHours() {
+        assertFalse(CockpitThemeMode.isDaytimeHour(5))
+        assertTrue(CockpitThemeMode.isDaytimeHour(6))
+        assertTrue(CockpitThemeMode.isDaytimeHour(12))
+        assertTrue(CockpitThemeMode.isDaytimeHour(17))
+        assertFalse(CockpitThemeMode.isDaytimeHour(18))
+        assertFalse(CockpitThemeMode.isDaytimeHour(23))
+    }
+
+    @Test
+    fun systemHealthSnapshot_countsReadyChecksAccurately() {
+        val partial = SystemHealthHelper.HealthSnapshot(
+            isDefaultHome = true,
+            isAutoDriveEnabled = true,
+            isMediaSyncEnabled = false,
+            hasLocationAndMic = true,
+            isBatteryUnrestricted = false
+        )
+        assertEquals(3, partial.readyCount)
+        assertFalse(partial.isAllReady)
+
+        val full = partial.copy(isMediaSyncEnabled = true, isBatteryUnrestricted = true)
+        assertEquals(5, full.readyCount)
+        assertTrue(full.isAllReady)
+    }
+
+    @Test
+    fun mediaSessionMonitor_formatsTimecodeAndExtractsAmbientAccent() {
+        assertEquals("--:-- / --:--", MediaSessionMonitor.formatTrackTimecode(0L, 0L))
+        assertEquals("01:24 / 03:58", MediaSessionMonitor.formatTrackTimecode(84_000L, 238_000L))
+        assertEquals("03:58 / 03:58", MediaSessionMonitor.formatTrackTimecode(300_000L, 238_000L))
+        assertEquals("1:01:05 / 1:30:00", MediaSessionMonitor.formatTrackTimecode(3_665_000L, 5_400_000L))
+
+        assertNull(MediaSessionMonitor.extractAmbientAccentRgb(intArrayOf()))
+        assertNull(MediaSessionMonitor.extractAmbientAccentRgb(intArrayOf(0xFF000000.toInt(), 0xFFFFFFFF.toInt())))
+
+        val deepIndigo = 0xFF3A44B8.toInt()
+        val accent = MediaSessionMonitor.extractAmbientAccentRgb(intArrayOf(deepIndigo, deepIndigo, 0xFF050505.toInt()))
+        assertEquals(0x3A44B8, accent)
     }
 }
