@@ -10,6 +10,7 @@ import android.graphics.drawable.ColorDrawable
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
 import android.provider.Settings
@@ -182,8 +183,27 @@ class MainActivity : AppCompatActivity() {
         applyImmersiveFullscreen()
         refreshAutoDriveStatus()
         refreshOpenHealthDialogIfNeeded()
+        ensureRemoteNavListeningFromForeground()
         startGpsUpdates()
         mediaMonitor?.start()
+    }
+
+    private fun ensureRemoteNavListeningFromForeground() {
+        if (!RemoteNavStore.isEnabled(this)) return
+        RemoteNavClient.ensureStarted(this) { destination ->
+            runOnUiThread {
+                val launchContext: Context = if (!isFinishing && !isDestroyed) {
+                    this@MainActivity
+                } else {
+                    AutoDriveService.instance ?: applicationContext
+                }
+                RemoteNavLaunchActivity.launch(
+                    context = launchContext,
+                    displayLabel = destination.displayLabel,
+                    navigationQuery = destination.navigationQuery
+                )
+            }
+        }
     }
 
     override fun onPause() {
@@ -612,51 +632,128 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showRemoteNavPairingDialog() {
-        val dialog = createGlassDialog(R.layout.dialog_remote_nav, widthFraction = 0.58f)
+        val dialog = createGlassDialog(R.layout.dialog_remote_nav, widthFraction = 0.64f)
         dialog.findViewById<View>(R.id.panelRemoteNavDialog)?.let {
             LiquidGlassStyler.applyToRemoteNavDialog(it)
         }
 
         val tvCode = dialog.findViewById<TextView>(R.id.tvRemoteNavPairingCode)
         val tvState = dialog.findViewById<TextView>(R.id.tvRemoteNavStateHint)
+        val tvLiveDiag = dialog.findViewById<TextView>(R.id.tvRemoteNavLiveDiag)
+        val overlayBtn = dialog.findViewById<TextView>(R.id.btnRemoteNavOverlayPerm)
         val closeBtn = dialog.findViewById<View>(R.id.btnRemoteNavDialogClose)
+        val checkNowBtn = dialog.findViewById<View>(R.id.btnRemoteNavCheckNow)
         val toggleBtn = dialog.findViewById<TextView>(R.id.btnRemoteNavToggle)
         val regenBtn = dialog.findViewById<View>(R.id.btnRemoteNavRegenerate)
         val testBtn = dialog.findViewById<View>(R.id.btnRemoteNavTest)
 
-        TactileFeedbackHelper.attach(closeBtn, toggleBtn, regenBtn, testBtn)
+        TactileFeedbackHelper.attach(
+            closeBtn,
+            overlayBtn,
+            checkNowBtn,
+            toggleBtn,
+            regenBtn,
+            testBtn
+        )
 
-        fun renderPairingState() {
+        fun renderPairingState(status: RemoteNavClient.StatusSnapshot = RemoteNavClient.currentStatus) {
             val enabled = RemoteNavStore.isEnabled(this)
-            val serviceConnected = AutoDriveService.instance != null
+            val canOverlay = Settings.canDrawOverlays(this)
             tvCode.text = RemoteNavStore.getOrCreatePairingCode(this)
             toggleBtn.setText(
                 if (enabled) R.string.remote_nav_toggle_disable else R.string.remote_nav_toggle_enable
             )
-            val stateRes = when {
-                !enabled -> R.string.remote_nav_state_disabled
-                serviceConnected -> R.string.remote_nav_state_listening
-                else -> R.string.remote_nav_state_need_service
+            overlayBtn.visibility = if (enabled && !canOverlay) View.VISIBLE else View.GONE
+
+            when {
+                !enabled -> {
+                    tvState.setText(R.string.remote_nav_state_disabled)
+                    tvState.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
+                }
+                status.state == RemoteNavClient.State.CONNECTED -> {
+                    tvState.setText(R.string.remote_nav_state_listening)
+                    tvState.setTextColor(ContextCompat.getColor(this, R.color.accent_ready_green))
+                }
+                status.state == RemoteNavClient.State.CONNECTING -> {
+                    tvState.setText(R.string.remote_nav_state_connecting)
+                    tvState.setTextColor(ContextCompat.getColor(this, R.color.accent_fine_vision))
+                }
+                status.state == RemoteNavClient.State.ERROR -> {
+                    tvState.text = getString(R.string.remote_nav_state_error, status.detail)
+                    tvState.setTextColor(ContextCompat.getColor(this, R.color.accent_amber_warn))
+                }
+                else -> {
+                    tvState.setText(R.string.remote_nav_state_connecting)
+                    tvState.setTextColor(ContextCompat.getColor(this, R.color.accent_amber_warn))
+                }
             }
-            tvState.setText(stateRes)
-            tvState.setTextColor(
-                ContextCompat.getColor(
-                    this,
-                    if (enabled && serviceConnected) R.color.accent_ready_green else R.color.accent_amber_warn
-                )
-            )
+
+            val diagText = when {
+                !status.lastDestination.isNullOrBlank() ->
+                    getString(R.string.remote_nav_last_received, status.lastDestination)
+                status.detail.isNotBlank() -> status.detail
+                else -> RemoteNavStore.topicForPairingCode(RemoteNavStore.getOrCreatePairingCode(this))
+            }
+            tvLiveDiag.text = diagText
+        }
+
+        val statusListener: (RemoteNavClient.StatusSnapshot) -> Unit = { snap ->
+            runOnUiThread {
+                if (dialog.isShowing && !isFinishing && !isDestroyed) {
+                    renderPairingState(snap)
+                }
+            }
+        }
+        RemoteNavClient.addStatusListener(statusListener)
+        dialog.setOnDismissListener {
+            RemoteNavClient.removeStatusListener(statusListener)
+            applyImmersiveFullscreen()
         }
 
         closeBtn.setOnClickListener { dialog.dismiss() }
+        overlayBtn.setOnClickListener {
+            try {
+                startActivity(
+                    Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:$packageName")
+                    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            } catch (_: Exception) {
+                openSystemSettings()
+            }
+        }
+        checkNowBtn.setOnClickListener {
+            tvLiveDiag.text = "正在主動向雲端查詢待出發目的地…"
+            RemoteNavClient.pollOnceAsync(this) { ok, summary ->
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed) {
+                        tvLiveDiag.text = summary
+                        if (ok) {
+                            Toast.makeText(this, summary, Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(this, "連線失敗：$summary", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            }
+        }
         toggleBtn.setOnClickListener {
             val next = !RemoteNavStore.isEnabled(this)
             RemoteNavStore.setEnabled(this, next)
-            AutoDriveService.instance?.syncRemoteNavClient(forceRestart = true)
+            if (next) {
+                ensureRemoteNavListeningFromForeground()
+                AutoDriveService.instance?.syncRemoteNavClient(forceRestart = true)
+            } else {
+                RemoteNavClient.stop()
+            }
             renderPairingState()
         }
         regenBtn.setOnClickListener {
             RemoteNavStore.regeneratePairingCode(this)
-            AutoDriveService.instance?.syncRemoteNavClient(forceRestart = true)
+            if (RemoteNavStore.isEnabled(this)) {
+                RemoteNavClient.restart(this)
+            }
             renderPairingState()
             Toast.makeText(this, R.string.remote_nav_msg_regenerated, Toast.LENGTH_SHORT).show()
         }
@@ -669,6 +766,7 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
+        ensureRemoteNavListeningFromForeground()
         renderPairingState()
         dialog.show()
     }

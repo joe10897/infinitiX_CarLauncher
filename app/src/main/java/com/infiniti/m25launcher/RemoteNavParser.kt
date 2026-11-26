@@ -34,14 +34,11 @@ object RemoteNavParser {
     private const val MAX_REDIRECTS = 4
 
     /**
-     * Parses a single SSE `data: {...}` JSON line from ntfy.sh into an [SseIncomingMessage].
-     * Returns null for keepalive/open frames or malformed JSON.
+     * Parses either an SSE `data: {...}` line or a raw NDJSON `{...}` line from ntfy.sh
+     * into an [SseIncomingMessage]. Returns null for keepalive/open frames or malformed JSON.
      */
     fun parseSseEventLine(line: String): SseIncomingMessage? {
-        val trimmed = line.trim()
-        if (!trimmed.startsWith("data:")) return null
-        val jsonStr = trimmed.removePrefix("data:").trim()
-        if (jsonStr.isEmpty() || !jsonStr.startsWith("{")) return null
+        val jsonStr = extractEventJson(line) ?: return null
 
         return try {
             val obj = JSONObject(jsonStr)
@@ -57,6 +54,35 @@ object RemoteNavParser {
         } catch (_: Exception) {
             null
         }
+    }
+
+    /**
+     * Extracts the ntfy.sh server UTC timestamp from an `open` or `keepalive` SSE frame so
+     * message freshness never depends on the car head unit's local clock accuracy.
+     */
+    fun parseServerTimeFromControlFrame(line: String): Long? {
+        val jsonStr = extractEventJson(line) ?: return null
+        return try {
+            val obj = JSONObject(jsonStr)
+            val event = obj.optString("event")
+            if (event == "open" || event == "keepalive") {
+                obj.optLong("time", 0L).takeIf { it > 0L }
+            } else {
+                null
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun extractEventJson(line: String): String? {
+        val trimmed = line.trim()
+        val jsonStr = if (trimmed.startsWith("data:")) {
+            trimmed.removePrefix("data:").trim()
+        } else {
+            trimmed
+        }
+        return jsonStr.takeIf { it.startsWith("{") && it.endsWith("}") }
     }
 
     /**

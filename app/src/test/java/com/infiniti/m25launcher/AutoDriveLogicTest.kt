@@ -256,15 +256,35 @@ class AutoDriveLogicTest {
         assertEquals("Y51-7K4M-9P2X", RemoteNavStore.formatPairingCode("y51-7k4m-9p2x"))
         assertEquals("infinitiy51-nav-y517k4m9p2x", RemoteNavStore.topicForPairingCode("Y51-7K4M-9P2X"))
         assertEquals(
-            "https://ntfy.sh/infinitiy51-nav-y517k4m9p2x/sse?since=2m",
+            "https://ntfy.sh/infinitiy51-nav-y517k4m9p2x/sse?since=3m",
             RemoteNavStore.buildSseUrl("Y51-7K4M-9P2X")
+        )
+        assertEquals(
+            "https://ntfy.sh/infinitiy51-nav-y517k4m9p2x/json?poll=1&since=5m",
+            RemoteNavStore.buildPollJsonUrl("Y51-7K4M-9P2X")
         )
     }
 
     @Test
     fun remoteNavParser_parsesSseFramesAndExtractsPinpointDestinations() {
+        val openFrame = """data: {"id":"open1","time":1795662340,"event":"open"}"""
+        assertEquals(1795662340L, RemoteNavParser.parseServerTimeFromControlFrame(openFrame))
+
         val keepalive = RemoteNavParser.parseSseEventLine("""data: {"id":"abc","time":1700000000,"event":"keepalive"}""")
         assertNull(keepalive)
+
+        val ndjsonLine = """{"id":"msg2","time":1795662303,"event":"message","message":"{\"v\":1,\"raw\":\"435自助洗車場 https://maps.app.goo.gl/RmUc8iiNgiGzLGAe8\"}"}"""
+        val parsedNdjson = RemoteNavParser.parseSseEventLine(ndjsonLine)
+        assertEquals("msg2", parsedNdjson?.id)
+
+        val realExpandedTaiwanPlace =
+            "https://www.google.com/maps/place/220%E6%96%B0%E5%8C%97%E5%B8%82%E6%9D%BF%E6%A9%8B%E5%8D%80%E4%B8%AD%E6%AD%A3%E9%87%8C%E8%97%9D%E6%96%87%E8%A1%9757-1%E8%99%9F435%E8%87%AA%E5%8A%A9%E6%B4%97%E8%BB%8A%E5%A0%B4/data=!4m2!3m1!1s0x3442a9878b7eb44d:0xdc1fd4a0165fd19a"
+        val fromTaiwanPlace = RemoteNavParser.extractNavigationTarget(
+            rawText = "435自助洗車場 https://maps.app.goo.gl/RmUc8iiNgiGzLGAe8",
+            resolvedUrl = realExpandedTaiwanPlace
+        )
+        assertEquals("220新北市板橋區中正里藝文街57-1號435自助洗車場", fromTaiwanPlace?.navigationQuery)
+        assertEquals("435自助洗車場", fromTaiwanPlace?.displayLabel)
 
         val sseLine = """data: {"id":"msg1","time":1700000100,"event":"message","message":"{\"v\":1,\"raw\":\"台北101 https://maps.app.goo.gl/xyz\"}"}"""
         val parsedMsg = RemoteNavParser.parseSseEventLine(sseLine)

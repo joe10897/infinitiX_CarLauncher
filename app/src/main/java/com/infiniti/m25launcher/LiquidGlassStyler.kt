@@ -96,7 +96,9 @@ object LiquidGlassStyler {
         applyGlass(dialogRoot, R.id.panelRemoteNavDialog, CORNER_PANEL_DP, Variant.MODAL)
         applyGlass(dialogRoot, R.id.btnRemoteNavDialogClose, CORNER_SUB_DP, Variant.SUB_PANEL)
         applyGlass(dialogRoot, R.id.panelRemoteNavCodeBox, CORNER_SUB_DP, Variant.SUB_PANEL)
-        applyGlass(dialogRoot, R.id.btnRemoteNavToggle, CORNER_SUB_DP, Variant.ACCENT)
+        applyGlass(dialogRoot, R.id.btnRemoteNavOverlayPerm, CORNER_SUB_DP, Variant.SUB_PANEL)
+        applyGlass(dialogRoot, R.id.btnRemoteNavCheckNow, CORNER_SUB_DP, Variant.ACCENT)
+        applyGlass(dialogRoot, R.id.btnRemoteNavToggle, CORNER_SUB_DP, Variant.SUB_PANEL)
         applyGlass(dialogRoot, R.id.btnRemoteNavRegenerate, CORNER_SUB_DP, Variant.SUB_PANEL)
         applyGlass(dialogRoot, R.id.btnRemoteNavTest, CORNER_SUB_DP, Variant.SUB_PANEL)
     }

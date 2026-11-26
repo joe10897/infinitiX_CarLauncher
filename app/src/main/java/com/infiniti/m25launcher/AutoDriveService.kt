@@ -30,7 +30,6 @@ class AutoDriveService : AccessibilityService() {
     private var swcLearnCallback: ((Int) -> Unit)? = null
     private var swcLearnTimeoutRunnable: Runnable? = null
     private var screenOffCleanupRunnable: Runnable? = null
-    private var remoteNavClient: RemoteNavClient? = null
 
     private val screenWakeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -128,7 +127,7 @@ class AutoDriveService : AccessibilityService() {
     private fun handleAccScreenOff() {
         Log.i(TAG, "ACC/screen-off detected; pausing media and releasing background apps")
         cancelSwcLearnMode()
-        remoteNavClient?.stop()
+        RemoteNavClient.stop()
         mainHandler.removeCallbacksAndMessages(null)
         AppLauncher.setSplitImmersiveMode(this, false)
         AppLauncher.dispatchMediaKey(this, KeyEvent.KEYCODE_MEDIA_PAUSE)
@@ -466,15 +465,15 @@ class AutoDriveService : AccessibilityService() {
     }
 
     /**
-     * Starts, restarts, or stops the background phone-to-car SSE receiver according to
-     * [RemoteNavStore.isEnabled]. Safe to call from UI pairing controls.
+     * Starts, restarts, or stops the singleton phone-to-car SSE receiver according to
+     * [RemoteNavStore.isEnabled]. Safe to call from UI pairing controls or MainActivity.
      */
     fun syncRemoteNavClient(forceRestart: Boolean = true) {
         if (!RemoteNavStore.isEnabled(this)) {
-            remoteNavClient?.stop()
+            RemoteNavClient.stop()
             return
         }
-        val client = remoteNavClient ?: RemoteNavClient(this) { destination ->
+        val onArrival: (RemoteNavParser.ParsedDestination) -> Unit = { destination ->
             mainHandler.post {
                 RemoteNavLaunchActivity.launch(
                     context = this,
@@ -482,18 +481,16 @@ class AutoDriveService : AccessibilityService() {
                     navigationQuery = destination.navigationQuery
                 )
             }
-        }.also { remoteNavClient = it }
-
+        }
         if (forceRestart) {
-            client.restart()
+            RemoteNavClient.restart(this, onArrival)
         } else {
-            client.start()
+            RemoteNavClient.ensureStarted(this, onArrival)
         }
     }
 
     private fun cleanup() {
-        remoteNavClient?.stop()
-        remoteNavClient = null
+        RemoteNavClient.stop()
         mainHandler.removeCallbacksAndMessages(null)
         if (isReceiverRegistered) {
             try {

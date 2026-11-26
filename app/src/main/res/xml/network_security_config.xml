@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <!-- Android 10 (API 29) predates ISRG Root X2 (added in Android 14).
+         Bundle official Let's Encrypt ISRG Root X2 / X1 for ntfy.sh TLS validation. -->
+    <domain-config>
+        <domain includeSubdomains="true">ntfy.sh</domain>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="@raw/isrg_root_x2" />
+            <certificates src="@raw/isrg_root_x1" />
+        </trust-anchors>
+    </domain-config>
+</network-security-config>

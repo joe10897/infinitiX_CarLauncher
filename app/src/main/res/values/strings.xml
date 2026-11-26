@@ -69,9 +69,14 @@
     <string name="remote_nav_dialog_title">手機傳送導航配對</string>
     <string name="remote_nav_dialog_sub">於 Android 手機「Y51 Send」輸入以下配對碼即可一鍵發送出發</string>
     <string name="remote_nav_code_label">車機專屬配對碼 · VEHICLE PAIRING CODE</string>
-    <string name="remote_nav_state_listening">待機監聽中（需啟用無障礙管家，熄火自動休眠）</string>
+    <string name="remote_nav_state_listening">● 已連線雲端待機接收中（熄火自動休眠）</string>
+    <string name="remote_nav_state_connecting">正在連線雲端伺服器…</string>
+    <string name="remote_nav_state_error">連線異常：%1$s</string>
     <string name="remote_nav_state_need_service">已開啟，請先啟用無障礙管家以背景接收</string>
     <string name="remote_nav_state_disabled">已停用手機傳送接收</string>
+    <string name="remote_nav_btn_check_now">立即拉取檢查</string>
+    <string name="remote_nav_btn_overlay_perm">點此授權「顯示在其他應用上層」（背景自動彈出必開）</string>
+    <string name="remote_nav_last_received">最近收到：%1$s</string>
     <string name="remote_nav_toggle_enable">啟用接收</string>
     <string name="remote_nav_toggle_disable">停用接收</string>
     <string name="remote_nav_btn_regen">更換配對碼</string>

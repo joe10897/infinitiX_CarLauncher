@@ -50,7 +50,10 @@ object RemoteNavStore {
     }
 
     fun buildSseUrl(pairingCode: String): String =
-        "$NTFY_BASE_URL/${topicForPairingCode(pairingCode)}/sse?since=2m"
+        "$NTFY_BASE_URL/${topicForPairingCode(pairingCode)}/sse?since=3m"
+
+    fun buildPollJsonUrl(pairingCode: String): String =
+        "$NTFY_BASE_URL/${topicForPairingCode(pairingCode)}/json?poll=1&since=5m"
 
     fun topicForPairingCode(pairingCode: String): String =
         "$TOPIC_PREFIX${normalizeCode(pairingCode).lowercase()}"
