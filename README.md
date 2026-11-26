@@ -1,5 +1,7 @@
 # infinitiX_CarLauncher (Y51 DriveOS)
 
+> **Copyright (c) 2026 Simon C.-Y. Wong. All rights reserved.**
+
 專為 **Infiniti M25 (Y51)** 搭配 **方易通 FYT UIS7862 安卓車機（`1280 x 480` 8:3 超寬帶魚屏）** 打造的原生 Android (Kotlin) 車機桌面與零點擊行車自動化系統。
 
 採用日系原廠高對比儀表美學（Infiniti Fine Vision 風格）與低眩光深色液態玻璃（Liquid Glass）質感，以純原生 Android Views 建置，保持輕量體積與 Android 10（API 29）分屏及背景啟動相容性。

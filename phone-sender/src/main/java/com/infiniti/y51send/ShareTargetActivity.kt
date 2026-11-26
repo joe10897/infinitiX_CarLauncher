@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Simon C.-Y. Wong. All rights reserved.
+ */
+
 package com.infiniti.y51send
 
 import android.content.Intent

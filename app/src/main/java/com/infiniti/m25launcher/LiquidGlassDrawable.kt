@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Simon C.-Y. Wong. All rights reserved.
+ */
+
 package com.infiniti.m25launcher
 
 import android.content.res.Resources
